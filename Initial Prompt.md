@@ -1,3 +1,11 @@
+# Suncrest Controls: Project Brief
+
+This is the living brief for the project. Add new answers and decisions here as they are made. The original brief is kept as written so we can always see where this started.
+
+Plan and setup guide: [docs/README.md](docs/README.md). A formatted copy for reading and commenting is at https://claude.ai/artifact/2PVPHuZFu2TsG3WzzC3UW4.
+
+## Original brief
+
 I am needing to figure out the controls for our new church building. There a re multiple pieces and some may require some code to make happen. I would love to  find non-code solutions, but I want it to be a great experience for the people who use it. Here is what I am planning. 
 Let's start with the lobby. 
 I need a system to control the lighting. 
@@ -28,3 +36,46 @@ Additionally, I need to be able to control the audio in the room. We will have a
 The reason I bring up both the lighting and the audio is that while the audio could be controlled from a single point, the lighting needs to be by the doors. The lighting could be probably be simple, but if I am going to have to do the streamdecks for the audio could I just use a single custom system for the whole thing giving audio and lighting control on each stream deck. 
 
 Pleas ask questions and help me work through the best technical solution for this.
+
+## Answers to the design questions (2026-11-04)
+
+### Lighting
+
+1. **DMX size:** One DMX universe.
+2. **Emergency lighting:** Handled separately, with batteries on some of the lights. It is not part of this control system.
+3. **Door station access:** We might need covers of some sort. Other options are mounting them a little higher, or a front screen that doesn't really do anything and needs a next-page action to get to the changes.
+4. **Preset type:** Static is fine. Active would be nice, but it could get harder to program.
+5. **iPad and door stations:** The iPad overrides the door stations.
+6. **Schedule:** Would be great, but it isn't a hard requirement.
+
+### Audio
+
+7. **Auditorium feed:** An analog run from the auditorium Wing to the lobby Wing Rack.
+8. **Amps:** Each zone gets its own amp channel.
+9. **Audio control location:** Audio control at the doors would be cool but isn't critical. We need audio control near the rack that holds all the equipment, and that spot can also be a lighting control station.
+10. **Band:** Already figured out. There will be analog and an AES50 stage box.
+11. **Music:** We have Spotify. A playlist we can keep updated online would be great, and a few to choose from would be cool. We could also download music.
+12. **Bluetooth:** The rack is on the side of the lobby and can be used for Bluetooth.
+
+### Ownership
+
+13. **Long-term care:** Not sure who owns it yet, but we do have technical people. The core setup shouldn't need to change much, and things like light settings and playlists should be easy for lay people to change.
+
+## Decision log
+
+Newest first. Add a row whenever a decision is made or changed.
+
+| Date | Decision | Status |
+|---|---|---|
+| 2026-11-04 | The `docs/` folder is the long-term record of the plan | Decided |
+| 2026-11-04 | Playlists run on a WiiM Pro Plus with Spotify presets, with licensing still to settle | Proposed, licensing open |
+| 2026-11-04 | Door stations use a front screen and mounting height first, with covers only if needed | Proposed |
+| 2026-11-04 | iPad Mode is set from the rack station and locks the door stations | Proposed, pending bench test |
+| 2026-11-04 | ODE Mk3 merges presets and iPad over Art-Net, with sACN priority as Plan B | Proposed, pending bench test |
+| 2026-11-04 | S-Play Mini stores the presets, one playlist each, with a limit of eight | Proposed, pending bench test |
+| 2026-11-04 | Launch with static looks and add active looks later | Decided |
+| 2026-11-04 | Use one system for lighting and audio, run by Bitfocus Companion with Stream Decks | Proposed, pending bench test |
+| 2026-11-04 | Speaker zones live in Wing Rack matrices | Proposed, pending bench test |
+| 2026-11-04 | Rack station is required and handles audio and lighting. Audio at the doors is optional | Decided |
+| 2026-11-04 | Emergency lighting stays outside this system | Decided |
+| 2026-11-04 | Auditorium feed is an analog run to the Wing Rack | Decided |
