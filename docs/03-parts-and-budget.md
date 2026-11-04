@@ -18,3 +18,5 @@ The control electronics come to about $2,500 for three door stations. About $1,9
 This excludes door faceplates, cables, labor, and an access point if the building doesn't already have one for the AV network. The Wing Rack, amps and speakers are already planned separately.
 
 Plan on one spare Stream Deck and one spare dock once the design is proven. They are the parts most exposed to the public.
+
+The door decks may change to the [Stream Deck Module](08-door-stations.md#choose-the-deck), which suits a wall better. I couldn't confirm a US price, so the budget still shows the MK.2.

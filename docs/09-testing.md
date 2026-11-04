@@ -1,6 +1,6 @@
 # Testing
 
-Buy one door station, the Stream Deck +, the S-Play Mini and the ODE Mk3 first, then pass these 12 tests before ordering the rest. Each one covers something the documentation couldn't confirm.
+Buy one door station, the Stream Deck +, the S-Play Mini and the ODE Mk3 first, then pass these 14 tests before ordering the rest. Each one covers something the documentation couldn't confirm.
 
 | # | Test | Pass means | If it fails |
 | --- | --- | --- | --- |
@@ -14,8 +14,10 @@ Buy one door station, the Stream Deck +, the S-Play Mini and the ODE Mk3 first, 
 | 8 | Change sends, mutes and faders from Companion | All 20 sends and 5 matrices respond | Send OSC directly on port 2223, such as `/bus/14/send/MX1/on` |
 | 9 | Keep the Wing app open while using Companion | Button status stays correct | See the note below |
 | 10 | Recall a band snapshot | Zones don't change | Set scope on each band snapshot |
-| 11 | Start a WiiM preset by HTTP with no phone nearby | The Spotify playlist plays | Try the [Companion Spotify module](https://github.com/bitfocus/companion-module-spotify-remote) or another player |
-| 12 | Turn the Stream Deck + dials | Zone volume follows smoothly | Use keys for volume up and down |
+| 11 | Start a WiiM preset by HTTP with no phone nearby | The playlist plays, including a song added after the preset was saved | Try the [Companion Spotify module](https://github.com/bitfocus/companion-module-spotify-remote) or another player |
+| 12 | Turn the Stream Deck + dials | Zone volume follows smoothly, and the strip shows the level. Volume stops at 0 dB and -60 dB | Use keys for volume up and down |
+| 13 | Import [lobby.companionconfig](../config/stream-deck/lobby.companionconfig) into Companion 5.1.2 or newer | All pages, 3 connections, 10 variables and 4 triggers appear, with no log errors, and each key runs its [listed action](14-stream-deck-pages.md) | Report the error, fix `build.py` and import again. Build the keys by hand from the same reference if it can't be fixed |
+| 14 | Hold the front key, press a door preset, and leave a door idle | Hold opens lights, a choice returns in 5 seconds, and idle returns in 30 seconds. iPad Mode locks these keys on every door, including one rebooted during it | Change the times in the key, or send doors to a locked page by surface ID |
 
 Test 9 matters because the Wing [allows one active subscription](https://github.com/bitfocus/companion-module-behringer-wing), and the newest subscriber is the only receiver. If status goes stale, commands should still work. Trust the custom variables for status rather than the Wing's reported state.
 

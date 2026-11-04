@@ -31,15 +31,13 @@ Adjust the input numbers and buses to fit the band plan. Screen names below come
 
 ## Set up the playlist player
 
-Settle music licensing before this goes live. See Open items.
-
 1. Connect the WiiM to the AV switch and set it up in the WiiM Home app.
 2. Sign in to the streaming account.
 3. Run its RCA outputs to two Wing Rack inputs. Use a stereo DI if the unbalanced connection hums.
 4. Save each playlist to a WiiM preset. Name them for how people use them, such as Morning or Christmas.
-5. Test a preset from a browser: `http://192.168.50.40/httpapi.asp?command=MCUKeyShortClick:1`
+5. Test a preset from a browser: `https://192.168.50.40/httpapi.asp?command=MCUKeyShortClick:1`
 
-The [WiiM HTTP API](https://www.wiimhome.com/pdf/HTTP%20API%20for%20WiiM%20Products.pdf) documents the URL format. The [preset command](https://forum.wiimhome.com/threads/possible-to-start-a-qobuz-playlist-and-or-wiim-preset-from-the-http-api.968/) comes from forum users, so it is on the bench test list. Try `https` if plain `http` fails.
+The [WiiM HTTP API](https://www.wiimhome.com/pdf/HTTP%20API%20for%20WiiM%20Products.pdf) documents this command. The device uses a self-signed certificate, so expect a browser warning.
 
 Downloaded music needs no extra hardware. Play it from a phone or iPad over Bluetooth.
 

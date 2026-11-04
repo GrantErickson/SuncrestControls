@@ -14,6 +14,11 @@ Checked on 2026-11-04.
 - [WING Compact quick start](https://www.adorama.com/col/productManuals/BEHWINGCM.pdf), used for screen names
 - [Wing snapshots and safes](https://drewbrashler.com/?p=43975)
 - [Elgato Network Dock setup](https://www.elgato.com/explorer/products/stream-deck/how-to-set-up-stream-deck-network-dock/)
+- [Elgato Network Dock overview](https://www.elgato.com/explorer/products/stream-deck/stream-deck-network-dock-overview/), used for supported models
+- [Stream Deck Module 15 Keys](https://www.elgato.com/ww/en/p/stream-deck-module-15-keys)
+- [Companion 5.1.2 source](https://github.com/bitfocus/companion/tree/v5.1.2), used for the import format and internal actions
+- [Generic OSC module](https://github.com/bitfocus/companion-module-generic-osc) and [generic HTTP module](https://github.com/bitfocus/companion-module-generic-http)
+- [Stream Deck + control layout](https://github.com/Julusian/node-elgato-stream-deck/blob/main/packages/core/src/models/definitions.ts)
 - [Stream Deck MK.2 specifications](https://help.elgato.com/hc/en-us/articles/18208816152333-Elgato-Stream-Deck-MK-2-Technical-Specifications)
 - [WiiM HTTP API](https://www.wiimhome.com/pdf/HTTP%20API%20for%20WiiM%20Products.pdf)
 - [Springtree wall station FAQ](https://www.springtree.net/?p=21197)

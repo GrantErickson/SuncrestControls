@@ -18,6 +18,7 @@ The git repo is the project's memory, and each kind of change has a clear owner.
 | --- | --- |
 | `Initial Prompt.md` | Living brief, answers and decision log |
 | `docs/` | These planning documents |
+| `config/stream-deck/` | First importable Companion file, icons, and the script that builds them |
 | `config/companion/` | Companion exports in YAML |
 | `config/s-play/` | S-Play `.bak` backups |
 | `config/wing/` | Wing snapshots and show files |

@@ -54,12 +54,18 @@ Pleas ask questions and help me work through the best technical solution for thi
 8. **Amps:** Each zone gets its own amp channel.
 9. **Audio control location:** Audio control at the doors would be cool but isn't critical. We need audio control near the rack that holds all the equipment, and that spot can also be a lighting control station.
 10. **Band:** Already figured out. There will be analog and an AES50 stage box.
-11. **Music:** We have Spotify. A playlist we can keep updated online would be great, and a few to choose from would be cool. We could also download music.
+11. **Music:** We have Spotify. A playlist we can keep updated online would be great, and a few to choose from would be cool. We could also download music. The church has a more expansive music license.
 12. **Bluetooth:** The rack is on the side of the lobby and can be used for Bluetooth.
 
 ### Ownership
 
 13. **Long-term care:** Not sure who owns it yet, but we do have technical people. The core setup shouldn't need to change much, and things like light settings and playlists should be easy for lay people to change.
+
+### Follow-up answers
+
+14. **SharePoint:** We use SharePoint through Teams a lot. Playlists of files could be a folder with a subfolder for each playlist, holding MP3 files. That could clean up the Spotify situation, and we wouldn't need to keep Spotify software updated. If there's an easy way to use Spotify long-term, that would probably be better.
+15. **Stream Deck configuration:** Create the configuration for each page, what goes behind it to drive the hardware, the icons, and a layout.
+16. **Wall mount:** Is there a Stream Deck wall mount?
 
 ## Decision log
 
@@ -67,8 +73,15 @@ Newest first. Add a row whenever a decision is made or changed.
 
 | Date | Decision | Status |
 |---|---|---|
+| 2026-11-04 | Door deck: Stream Deck Module 15 Keys or MK.2 | Open, Module recommended for flush walls |
+| 2026-11-04 | iPad Mode is held for one second, so a stray press cannot black out the lobby | Proposed |
+| 2026-11-04 | Page 3 becomes Door Audio with room buttons | Proposed |
+| 2026-11-04 | Doors lock by checking `light_mode`, replacing the Door iPad page and any door surface IDs | Proposed, pending bench test |
+| 2026-11-04 | Stream Deck pages, icons and the import file live in `config/stream-deck/`, built by one script | Proposed, pending bench test |
+| 2026-11-04 | Playlist source: SharePoint folders or Spotify | Open, SharePoint folders recommended |
+| 2026-11-04 | Lobby music is covered by the church's broader music license | Decided |
 | 2026-11-04 | The `docs/` folder is the long-term record of the plan | Decided |
-| 2026-11-04 | Playlists run on a WiiM Pro Plus with Spotify presets, with licensing still to settle | Proposed, licensing open |
+| 2026-11-04 | Playlists run on a WiiM Pro Plus, which can play Spotify presets or m3u playlists of files | Proposed, pending bench test |
 | 2026-11-04 | Door stations use a front screen and mounting height first, with covers only if needed | Proposed |
 | 2026-11-04 | iPad Mode is set from the rack station and locks the door stations | Proposed, pending bench test |
 | 2026-11-04 | ODE Mk3 merges presets and iPad over Art-Net, with sACN priority as Plan B | Proposed, pending bench test |

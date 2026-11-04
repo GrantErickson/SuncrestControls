@@ -9,7 +9,7 @@ The S-Play Mini holds the looks, the Wing Rack holds the zones, and the iPad tak
 ## Design rules
 
 - **Buttons set a fixed state.** Whole-room buttons set every zone, and never toggle. That makes reset reliable after someone uses the Wing app.
-- **Content stays out of the core.** Looks live in the S-Play and playlists live in Spotify, so lay people never open Companion.
+- **Content stays out of the core.** Looks live in the S-Play and playlists live outside Companion, so lay people never open it.
 - **Each job has one home.** Companion never stores a look, and the S-Play never decides what a button means.
 
 ## What happens when a part fails

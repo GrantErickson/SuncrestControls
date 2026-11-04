@@ -16,6 +16,6 @@ The design is not final until the bench tests pass. Those tests are cheap, and t
 | 8 | Each zone has an amp channel | Zones can be fully independent |
 | 9 | Audio is required at the rack, optional at doors | The rack station does everything. Doors get lighting first |
 | 10 | Band is handled, with analog and AES50 | Zones must not collide with band outputs |
-| 11 | Spotify playlists, a few to choose from | A streaming player with selectable playlists, licensing still to settle |
+| 11 | Spotify playlists, a few to choose from | A streaming player with selectable playlists, under the church music license |
 | 12 | Bluetooth at the rack | A receiver in the rack, feeding one Wing input |
 | 13 | Technical people exist, lay people change content | Separate what lay people change from the core setup |

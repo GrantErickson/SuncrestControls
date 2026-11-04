@@ -8,6 +8,8 @@ Most people only need a door station. This section can be printed as a card for 
 2. Press the look you want. The door returns to its front screen by itself.
 3. Press **All Off** when you lock up.
 
+For the speakers, press **Audio** on that same screen, then choose what to play.
+
 If the door says **iPad in control**, someone is running an event. Ask them, or go to the rack station.
 
 ## At the rack station
@@ -33,7 +35,7 @@ Turn a dial to change that area's volume. For one area only, press **Zones**, pi
 
 ## Changing the music
 
-- **Change the songs.** Edit the playlist in Spotify. The change appears by itself.
+- **Change the songs.** Edit the playlist in Spotify, then re-save it to its WiiM preset. One user reports presets don't update by themselves.
 - **Change which playlist a button plays.** A trained volunteer saves a different playlist to that preset in the WiiM Home app.
 
 Keep button names general, such as Morning or Christmas. Then new playlists never need a new label.
@@ -42,13 +44,13 @@ Keep button names general, such as Morning or Christmas. Then new playlists neve
 
 This is for a trained volunteer, and takes about ten minutes. Download a backup from the S-Play Storage page first.
 
-1. Press **iPad Mode** on the rack station.
+1. Hold **iPad Mode** on the rack station for one second.
 2. Open the lighting app and build the look.
 3. On a laptop on the AV Wi-Fi, open the S-Play page.
 4. Open that preset's cue and press **DMX Snapshot**.
 5. Preview it, then save.
 6. Close the lighting app.
-7. Press **iPad Mode** to leave it, then press the preset to check it.
+7. Hold **iPad Mode** to leave it, then press the preset to check it.
 
 For a small change, open the cue, change the value using the DMX patch sheet, press **Set DMX**, preview, and save.
 
@@ -57,7 +59,7 @@ For a small change, open the cue, change the value using the DMX patch sheet, pr
 | Problem | Try this |
 | --- | --- |
 | Door screen is blank | Wait one minute, then check the rack power |
-| Door says iPad in control and no event is running | Press **iPad Mode** on the rack station |
+| Door says iPad in control and no event is running | Hold **iPad Mode** on the rack station for one second |
 | Door buttons don't change the lights | Use the rack station, then call your technical contact |
 | One area has no sound | Press **Zones**, pick the area, and check it isn't Off |
 | Music stopped | Open the WiiM Home app and check the internet |
