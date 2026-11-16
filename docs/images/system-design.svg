@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1344" height="900" viewBox="0 0 1344 900" font-family="Segoe UI, Arial, sans-serif">
+  <!-- Source for system-design.png. Render with Chrome: headless screenshot at 1344 by 900. -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#c4c2b8"/>
+    </marker>
+    <style>
+      .box{fill:#fff;stroke:#d3d1c7;stroke-width:2}
+      .title{font-size:23px;font-weight:600;fill:#1c1d1f}
+      .line{font-size:19px;fill:#55575c}
+      .tag{font-size:19px;fill:#55575c}
+      .ctl{stroke:#c4c2b8;stroke-width:2;fill:none;marker-end:url(#arrow)}
+      .sig{stroke:#c4c2b8;stroke-width:2;fill:none;stroke-dasharray:7 6;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1344" height="900" fill="#fff"/>
+  <text x="42" y="52" font-size="26" font-weight="600" fill="#1c1d1f">Companion runs the buttons and the lights. The Wing and the players run on their own</text>
+
+  <rect class="box" x="262" y="85" width="382" height="126" rx="12"/>
+  <text class="title" x="284" y="124">Door stations</text>
+  <text class="line" x="284" y="160">Stream Deck + on a Network Dock</text>
+  <text class="line" x="284" y="188">Same pages, some locked out</text>
+
+  <rect class="box" x="700" y="85" width="382" height="126" rx="12"/>
+  <text class="title" x="722" y="124">Rack station</text>
+  <text class="line" x="722" y="160">Stream Deck + on USB</text>
+  <text class="line" x="722" y="188">Every page, including iPad Mode</text>
+
+  <path class="ctl" d="M453 211V266"/>
+  <path class="ctl" d="M891 211V266"/>
+
+  <rect x="42" y="268" width="1260" height="100" rx="12" fill="#e6f0fb" stroke="#2f7be0" stroke-width="3"/>
+  <text x="672" y="308" text-anchor="middle" font-size="23" font-weight="600" fill="#1c1d1f">Companion</text>
+  <text x="672" y="342" text-anchor="middle" font-size="19" fill="#55575c">Button layouts and logic, the light levels and saved looks, and the schedule. It holds no audio mix.</text>
+
+  <path class="sig" d="M233 368V436"/><text class="tag" x="248" y="410">Art-Net</text>
+  <path class="ctl" d="M672 368V436"/><text class="tag" x="687" y="410">HTTP</text>
+  <path class="ctl" d="M1110 368V436"/><text class="tag" x="1125" y="410">OSC</text>
+
+  <rect class="box" x="42" y="438" width="382" height="126" rx="12"/>
+  <text class="title" x="64" y="477">ODE Mk3</text>
+  <text class="line" x="64" y="513">Turns Art-Net into DMX</text>
+  <text class="line" x="64" y="541">Merges Companion and the iPad</text>
+
+  <rect class="box" x="481" y="438" width="382" height="126" rx="12"/>
+  <text class="title" x="503" y="477">Audio sources</text>
+  <text class="line" x="503" y="513">Auditorium feed, WiiM playlist,</text>
+  <text class="line" x="503" y="541">Bluetooth, band and mics</text>
+
+  <rect class="box" x="919" y="438" width="382" height="126" rx="12"/>
+  <text class="title" x="941" y="477">Wing Rack</text>
+  <text class="line" x="941" y="513">Five zones in matrices</text>
+  <text class="line" x="941" y="541">Mics on Bus 13 reach every zone</text>
+
+  <path class="sig" d="M863 501H917"/>
+  <path class="sig" d="M190 564V648"/><text class="tag" x="205" y="614">DMX</text>
+  <path class="sig" d="M560 650V607H330V566"/>
+  <path class="sig" d="M1110 564V648"/>
+
+  <rect class="box" x="42" y="650" width="382" height="126" rx="12"/>
+  <text class="title" x="64" y="689">Lobby lights</text>
+  <text class="line" x="64" y="725">One DMX universe, with linear</text>
+  <text class="line" x="64" y="753">house lights on 0-10V decoders</text>
+
+  <rect class="box" x="481" y="650" width="382" height="126" rx="12"/>
+  <text class="title" x="503" y="689">Lighting iPad</text>
+  <text class="line" x="503" y="725">Luminair or your own app</text>
+  <text class="line" x="503" y="753">Art-Net unicast over Wi-Fi</text>
+
+  <rect class="box" x="919" y="650" width="382" height="126" rx="12"/>
+  <text class="title" x="941" y="689">Amps and speakers</text>
+  <text class="line" x="941" y="725">One amp channel per zone</text>
+
+  <path d="M481 830H546" stroke="#c4c2b8" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="tag" x="570" y="837">Control message</text>
+  <path d="M481 868H546" stroke="#c4c2b8" stroke-width="2" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+  <text class="tag" x="570" y="875">Lighting or audio signal</text>
+</svg>

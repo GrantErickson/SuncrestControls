@@ -66,6 +66,20 @@ Pleas ask questions and help me work through the best technical solution for thi
 14. **SharePoint:** We use SharePoint through Teams a lot. Playlists of files could be a folder with a subfolder for each playlist, holding MP3 files. That could clean up the Spotify situation, and we wouldn't need to keep Spotify software updated. If there's an easy way to use Spotify long-term, that would probably be better.
 15. **Stream Deck configuration:** Create the configuration for each page, what goes behind it to drive the hardware, the icons, and a layout.
 16. **Wall mount:** Is there a Stream Deck wall mount?
+17. **Rack deck (2026-11-11):** Should the rack use a regular Stream Deck or a Stream Deck + with dials? Adjusting volumes like on the Wing makes knobs appealing, but the + has fewer buttons. Is volume up/down keys with easy paging better than knobs with fewer keys, and does the + do paging?
+18. **Rack main page (2026-11-11):** The + XL is cool but might be too much for volunteers. Proposed main page: lights on at dim levels 1, 2 and 3; lights off; audio on from the stream; audio on from the auditorium; audio off; a volume knob, a brightness override knob and a mic volume knob. That covers the basics and stays simple.
+19. **First import (2026-11-15):** The configuration was loaded into Companion, but no buttons showed. The Stream Deck + is on hand, and it needs to handle both lighting and audio.
+20. **Rack main page layout (2026-11-15):** Off goes on the left of each row. Top row: Lights Off, Lights 1, 2 and 3. Bottom row: Audio Off, Auditorium, Music and More. Dials, left to right: all lights, just the linear lights, overall volume and mic volume. The mics should be on all the time, and the mic dial controls their volume.
+21. **Lighting software (2026-11-15):** Should we build software for the lights so we can just control them? Lumen, already in development, might work for this.
+22. **Other lighting options (2026-11-15):** What other options are there for lighting control? A much simpler custom app is possible, but Lumen might work well. Is there something third party?
+23. **Lighting engine (2026-11-15):** Go with Companion for DMX.
+24. **Graphics (2026-11-15):** Build out the Companion configuration with all the graphics needed to make it intuitive, interactive and beautiful.
+25. **Surface offline (2026-11-15):** After importing, the Stream Deck + shows Offline in Companion. The Remote Surfaces pane shows a device on the network. How is the surface configured from the imported file?
+26. **Test deck on the network (2026-11-15):** The test Stream Deck + has an IP address but no row on the Surfaces page, so it's on the network, most likely through a Network Dock.
+27. **First real run (2026-11-15):** It works on the Stream Deck +. The Volume and Mics knobs didn't change anything on a desk with no Wing, and the icons didn't look that great.
+28. **Doors and volume (2026-11-15):** The door stations should work like the rack home, with the three light settings and some audio. The volume should be for the auditorium or music, whatever is selected, not the mains.
+29. **Every station is a Stream Deck + (2026-11-15):** All the devices are Stream Deck + decks. Assume for now they all have the same functionality, and the doors will be locked out of functionality by page.
+30. **Dial speed (2026-11-15):** The dials move one number per detent. Turned quickly they should skip ahead, and turned slowly they should move one at a time.
 
 ## Decision log
 
@@ -73,19 +87,34 @@ Newest first. Add a row whenever a decision is made or changed.
 
 | Date | Decision | Status |
 |---|---|---|
-| 2026-11-04 | Door deck: Stream Deck Module 15 Keys or MK.2 | Open, Module recommended for flush walls |
+| 2026-11-15 | Dials speed up when turned quickly: clicks under 120 ms apart move 2 steps, under 50 ms move 4, and a report of several clicks counts each, up to 8 steps. Reversing or changing dial starts slow. Tuned with `turn_medium_ms` and `turn_fast_ms` in Companion | Proposed, pending a feel test on the hardware |
+| 2026-11-15 | Every station, the rack and each door, is a Stream Deck + with the same pages: Home on page 1, More 2, Playlists 3, zones 4 to 8. Each door's surface group starts on Home with every page, and doors are locked out by taking pages out of their group. The door front screen, Door Controls page and Door test emulator are gone | Decided |
+| 2026-11-15 | Doors open to one Door Controls page: Lights Off, Lights 1 to 3 and a lights ring; Audio Off, Auditorium, Music, Lobby Event and a volume ring; Dimmer, Brighter, Quieter, Louder and Back. Door Audio is gone. The file includes a Door test emulator in the Door 1 group | Replaced the same day: every station is a Stream Deck + with shared pages |
+| 2026-11-15 | The Volume dial moves the fader of whatever is playing: Bus 14, 15 or 16, or Main 1 in a Lobby Event. Room buttons reset Bus 14 to 16 but not Main 1. Zone faders change only on zone pages | Decided |
+| 2026-11-15 | Companion keeps its own copy of zone levels, mic level and mute, a Volume offset from normal, and shows the Wing's values when it reports them, with a NO WING badge otherwise. Keys hide Companion's status marks. Artwork redrawn: bigger icons, brighter resting tiles, bulb icons for Lights 1 to 3 | Proposed, pending a look on the hardware |
+| 2026-11-15 | The Stream Deck file carries the Elgato surface integration and four surface groups, Rack and Door 1 to 3, with startup pages and page permissions. Each deck joins its group | Proposed, pending bench test 13 |
+| 2026-11-15 | The Stream Deck file uses Companion 5 layered buttons: lit and locked key art, and live touch-strip panels with level bars. Its 60 images live in Companion's image library | Proposed, pending bench test 13 |
+| 2026-11-15 | Looks are saved at any station by holding a Lights key for 3 seconds, which also writes them to Companion's startup values so exports keep them | Proposed, pending bench test 7 |
+| 2026-11-15 | Doors show Lights Off, Lights 1 to 3, a level ring, Dimmer and Brighter, in place of the eight named presets | Replaced: doors share the rack's pages |
+| 2026-11-15 | Companion sends the lights as Art-Net to the ODE through its generic-artnet module. The S-Play Mini is dropped | Decided |
+| 2026-11-15 | Lighting engine for the light dials, replacing the S-Play Mini, which can't dim live: DMX Core 100, Lumen, Pharos LPC, QLC+ or Companion's own Art-Net module | Replaced: Companion's own Art-Net module was chosen |
+| 2026-11-15 | Wireless mics reach every zone in every source mode through their own bus, and the Mic dial sets their level | Decided |
+| 2026-11-15 | Rack main page: Lights Off, 1, 2 and 3 on top; Audio Off, Auditorium, Music and More below; dials for all lights, linear lights, volume and mic | Decided |
+| 2026-11-11 | Rack deck stays a Stream Deck +, with a simple main page of 7 keys and 3 knobs: light levels 1 to 3, lights off, stream, auditorium, audio off, and knobs for volume, brightness and mic | Stream Deck + decided, the + XL is too much for volunteers. Layout replaced by the 2026-11-15 row |
+| 2026-11-11 | Rack deck: Stream Deck + XL (36 keys, 6 dials), Stream Deck + (8 keys, 4 dials) or a keys-only deck | Replaced by the row above |
+| 2026-11-04 | Door deck: Stream Deck Module 15 Keys or MK.2 | Replaced on 2026-11-15: every station is a Stream Deck + |
 | 2026-11-04 | iPad Mode is held for one second, so a stray press cannot black out the lobby | Proposed |
-| 2026-11-04 | Page 3 becomes Door Audio with room buttons | Proposed |
+| 2026-11-04 | Page 3 becomes Door Audio with room buttons | Replaced on 2026-11-15 by the single Door Controls page |
 | 2026-11-04 | Doors lock by checking `light_mode`, replacing the Door iPad page and any door surface IDs | Proposed, pending bench test |
 | 2026-11-04 | Stream Deck pages, icons and the import file live in `config/stream-deck/`, built by one script | Proposed, pending bench test |
 | 2026-11-04 | Playlist source: SharePoint folders or Spotify | Open, SharePoint folders recommended |
 | 2026-11-04 | Lobby music is covered by the church's broader music license | Decided |
 | 2026-11-04 | The `docs/` folder is the long-term record of the plan | Decided |
 | 2026-11-04 | Playlists run on a WiiM Pro Plus, which can play Spotify presets or m3u playlists of files | Proposed, pending bench test |
-| 2026-11-04 | Door stations use a front screen and mounting height first, with covers only if needed | Proposed |
-| 2026-11-04 | iPad Mode is set from the rack station and locks the door stations | Proposed, pending bench test |
-| 2026-11-04 | ODE Mk3 merges presets and iPad over Art-Net, with sACN priority as Plan B | Proposed, pending bench test |
-| 2026-11-04 | S-Play Mini stores the presets, one playlist each, with a limit of eight | Proposed, pending bench test |
+| 2026-11-04 | Door stations use a front screen and mounting height first, with covers only if needed | Changed on 2026-11-15: mounting height and page lockout per door, with no front screen |
+| 2026-11-04 | iPad Mode is set from the rack station and locks the door stations | Proposed, pending bench test. Since 2026-11-15, any station with the More page can set it, so lock doors out of More |
+| 2026-11-04 | ODE Mk3 merges presets and iPad over Art-Net, with sACN priority as Plan B | Proposed, pending bench test. Since 2026-11-15 the two sources are Companion and the iPad |
+| 2026-11-04 | S-Play Mini stores the presets, one playlist each, with a limit of eight | Dropped on 2026-11-15, because it can't drive the light dials |
 | 2026-11-04 | Launch with static looks and add active looks later | Decided |
 | 2026-11-04 | Use one system for lighting and audio, run by Bitfocus Companion with Stream Decks | Proposed, pending bench test |
 | 2026-11-04 | Speaker zones live in Wing Rack matrices | Proposed, pending bench test |

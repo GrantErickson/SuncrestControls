@@ -10,8 +10,8 @@ The design is proposed, not final, until the bench tests in [Testing](09-testing
 | [System design](02-system-design.md) | How the parts fit, and what happens when one fails | Technical team |
 | [Parts list and budget](03-parts-and-budget.md) | What to buy and what it costs | Decision makers |
 | [Network plan](04-network-plan.md) | VLAN, addresses and power | Technical team |
-| [Lighting setup](05-lighting-setup.md) | ODE Mk3, S-Play Mini, presets and the iPad | Technical team |
-| [Audio setup](06-audio-setup.md) | Wing Rack zones, sources and protection | Technical team |
+| [Lighting setup](05-lighting-setup.md) | ODE Mk3, the patch, the three looks and the iPad | Technical team |
+| [Audio setup](06-audio-setup.md) | Wing Rack zones, sources, mics and protection | Technical team |
 | [Companion setup](07-companion-setup.md) | Install, import, surfaces, iPad Mode and schedule | Technical team |
 | [Stream Deck pages](14-stream-deck-pages.md) | Every page and key, with what runs behind it | Technical team |
 | [Door stations](08-door-stations.md) | Deck choice, mounting, height and covers | Installers |
