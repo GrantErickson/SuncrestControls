@@ -38,6 +38,7 @@ IMAGES = ROOT / "docs" / "images"
 
 # ---------------------------------------------------------------- the system
 WING_IP, ODE_IP, WIIM_IP = "192.168.50.20", "192.168.50.31", "192.168.50.40"
+POWER_IP = "192.168.50.45"  # network relay that closes the Furman sequencer's remote contact, which powers the amps
 ARTNET_UNIVERSE = 0
 
 ZONES = [  # number, name, matrix, default fader in dB, page, icon
@@ -96,7 +97,7 @@ MIC_START = -10                    # Bus 13's level in the Lobby Base snapshot
 
 ACCENTS = {  # one color per kind of key. Every tile, bar and ring color is worked out from these
     "light": "#ffb52e", "linear": "#f2d49b", "audio": "#4aa8ff", "music": "#a888ff", "mic": "#3fd6c2",
-    "off": "#ff6b57", "nav": "#9aa6b5", "ipad": "#c27bff", "save": "#3fd68a",
+    "off": "#ff6b57", "nav": "#9aa6b5", "ipad": "#c27bff", "save": "#3fd68a", "power": "#38c172",
 }
 
 
@@ -226,6 +227,12 @@ def dmx_send(ms):
     return action("dmx", "set_complex", upgrade=ARTNET_UPGRADE, params="$(custom:dmx_cmd)", duration=ms)
 
 
+def relay(on):
+    """Closes or opens the relay on the Furman's remote terminals, so it sequences the amplifiers on or off."""
+    return action("power", "get", url=f"rpc/Switch.Set?id=0&on={'true' if on else 'false'}", header="",
+                  jsonResultDataVariable="", result_stringify=True, statusCodeVariable="")
+
+
 # ---------------------------------------------------------------- expressions
 class X(str):
     """Marks an expression part inside tmpl()."""
@@ -256,9 +263,17 @@ def turn_speed(key):
 def turned(key):
     """The first actions of every dial turn: work out its speed, then remember when and which way it turned."""
     return [setexpr("turn_n", turn_speed(key)), setexpr("turn_ms", "unixNow()"), setvar("turn_key", key)]
+
+
+def plays(source):
+    """True while any zone plays this source."""
+    return " || ".join(f"$(custom:z{z}_src) == '{source}'" for z, *_ in ZONES)
+
+
 NONE_PLAYLIST = " && ".join(f"$(custom:z{z}_src) != 'Playlist'" for z, *_ in ZONES)
-ANY_PLAYLIST = " || ".join(f"$(custom:z{z}_src) == 'Playlist'" for z, *_ in ZONES)
-AUDIO_OFF = " && ".join(f"$(custom:z{z}_src) == 'Off'" for z, *_ in ZONES)
+ANY_PLAYLIST = plays("Playlist")
+POWERED = "$(custom:audio_power) == 1"  # the amplifiers are on
+UNPOWERED = f"!({POWERED})"
 
 
 def tracked(wing_var, custom):
@@ -279,7 +294,8 @@ def _first_source():
     return chain
 
 
-CUR_SRC = f"({_first_source()})"  # what the Volume dial controls: the source of the first zone that is on
+# What the Volume dial controls: the source of the first zone that is on, or nothing while the audio is off
+CUR_SRC = f"({POWERED} ? ({_first_source()}) : 'Off')"
 SRC_NOW = {name: tracked(f"$(wing:{sel.strip('/').replace('/', '')}_level)", var)
            for name, sel, var, _, _ in VOLUME_SOURCES}
 
@@ -395,6 +411,8 @@ def zone_block(z, s):
 DEFAULT_LEVELS, MUSIC_PLAY, MUSIC_START, MUSIC_STOP = "21/0/5", "21/0/6", "21/0/7", "21/1/0"
 PLAYLIST_LOC = {n: f"21/1/{n}" for n, *_ in PLAYLISTS}
 SCENE_LOC = {s[0]: f"21/2/{i}" for i, s in enumerate(SCENES)}
+POWER_ON, POWER_OFF = "21/3/0", "21/3/1"
+STOP_LOC = {source: f"21/3/{i + 2}" for i, (source, *_) in enumerate(SOURCES)}
 LOOK_LOC = {n: f"22/0/{n - 1}" for n, *_ in LOOKS}
 LIGHTS_OFF, LIGHTS_TOGGLE = "22/0/3", "22/0/4"
 SAVE_LOC = {n: f"22/0/{n + 4}" for n, *_ in LOOKS}
@@ -449,17 +467,32 @@ def build_library():
             [setvar("music_n", n), setvar("music_name", name), wait(50),
              when(ANY_PLAYLIST, [press(MUSIC_PLAY)], [press(SCENE_LOC["Music Inside"])])],
             f"Chooses {name}. Plays it now, or starts Music Inside if the room is silent")
-    # Row 2 of page 21: the whole-room scenes
+    # Row 2 of page 21: the whole-room scenes. A scene that plays anything turns the amplifiers on first
     for name, _, _, zones in SCENES:
         uses_music = "Playlist" in zones
-        acts = [press(MUSIC_START), wait(50)] if uses_music else []
+        acts = [press(POWER_ON)] if any(z != "Off" for z in zones) else []
+        acts += [press(MUSIC_START), wait(50)] if uses_music else []
         for z, source in enumerate(zones, 1):
             s = [x[0] for x in SOURCES].index(source) if source != "Off" else 4
             acts.append(press(zone_block(z, s)))
         acts.append(press(DEFAULT_LEVELS))
         if not uses_music:
             acts += [wait(200), press(MUSIC_STOP)]
-        lib(SCENE_LOC[name], f"Room\n{name}", acts, "Sets all five zones and their normal levels")
+        lib(SCENE_LOC[name], f"Room\n{name}", acts, "Sets all five zones and their normal levels" +
+            (", and turns the audio system on" if any(z != "Off" for z in zones)
+             else ". It leaves the amplifiers as they are"))
+    # Row 3 of page 21: amplifier power, and turning one source off
+    lib(POWER_ON, "Power\nOn", [setvar("audio_power", 1), relay(True)],
+        "Turns the audio system on: the relay closes and the Furman sequences the amplifiers on")
+    lib(POWER_OFF, "Power\nOff", [press(SCENE_LOC["All Audio Off"]), wait(500), setvar("audio_power", 0),
+                                  relay(False)],
+        "Turns every zone off and stops the music, then opens the relay so the Furman sequences the amplifiers off")
+    for source, _, label, _ in SOURCES:
+        acts = [when(f"$(custom:z{z}_src) == '{source}'", [press(zone_block(z, 4))]) for z, *_ in ZONES]
+        if source == "Playlist":
+            acts += [wait(200), press(MUSIC_STOP)]
+        lib(STOP_LOC[source], f"Stop\n{label}", acts,
+            f"Turns off every zone playing {source}, and leaves the other zones and the amplifiers alone")
 
     # Page 22: lights. Levels live in variables, and one block turns them into DMX
     for n, *_ in LOOKS:
@@ -515,16 +548,15 @@ def build_library():
                                       for name, sel, var, _, _ in VOLUME_SOURCES],
         "Puts whatever is playing back to its normal level, 0 dB")
     mic = f"/bus/{MIC_BUS}"
-    lib(MIC_UP, "Mic\nUp", [fader_step("mic_level", MIC_NOW, mic, MIC_MIN, MIC_MAX, 1)],
-        f"Raises the mic bus by 1 dB for each step in `turn_n`, stopping at {MIC_MAX} dB")
-    lib(MIC_DOWN, "Mic\nDown", [fader_step("mic_level", MIC_NOW, mic, MIC_MIN, MIC_MAX, -1)],
-        f"Lowers the mic bus by 1 dB for each step in `turn_n`, stopping at {MIC_MIN} dB")
-    lib(MIC_MUTE, "Mic\nMute", [when(MIC_MUTED, [wing_mute(mic, False), setvar("mic_muted", 0)],
-                                      [wing_mute(mic, True), setvar("mic_muted", 1)])],
-        "Mutes or unmutes the mic bus")
-    lib(CLOSE_UP, "Close\nUp", [setvar("light_mode", "deck"), wait(20), press(LIGHTS_OFF),
-                                press(SCENE_LOC["All Audio Off"])],
-        "Leaves iPad Mode, then turns off the lights and every zone")
+    lib(MIC_UP, "Mic\nUp", [when(POWERED, [fader_step("mic_level", MIC_NOW, mic, MIC_MIN, MIC_MAX, 1)])],
+        f"Raises the mic bus by 1 dB for each step in `turn_n`, stopping at {MIC_MAX} dB. Only while the audio is on")
+    lib(MIC_DOWN, "Mic\nDown", [when(POWERED, [fader_step("mic_level", MIC_NOW, mic, MIC_MIN, MIC_MAX, -1)])],
+        f"Lowers the mic bus by 1 dB for each step in `turn_n`, stopping at {MIC_MIN} dB. Only while the audio is on")
+    lib(MIC_MUTE, "Mic\nMute", [when(POWERED, [when(MIC_MUTED, [wing_mute(mic, False), setvar("mic_muted", 0)],
+                                                     [wing_mute(mic, True), setvar("mic_muted", 1)])])],
+        "Mutes or unmutes the mic bus. Only while the audio is on")
+    lib(CLOSE_UP, "Close\nUp", [setvar("light_mode", "deck"), wait(20), press(LIGHTS_OFF), press(POWER_OFF)],
+        "Leaves iPad Mode, then turns off the lights and the audio system")
 
 
 # ---------------------------------------------------------------- displays
@@ -556,14 +588,16 @@ VOLUME_DISPLAY = {
                                                 f"'{DIM}'"),
     "value_color": f"c = {CUR_SRC};\nc == 'Off' ? '{DIM}' : '#ffffff'",
     "badge": f"!({WING_ONLINE})",
+    "dim": UNPOWERED,
 }
 MIC_DISPLAY = {
     "title": "MICS", "art": "mic",
-    "value": f"{MIC_MUTED} ? 'Muted' : " + db_text(MIC_NOW),
-    "pct": db_pct(MIC_NOW, MIC_MIN, MIC_MAX),
-    "color": f"{MIC_MUTED} ? '{accent('off')}' : '{accent('mic')}'",
-    "value_color": f"{MIC_MUTED} ? '{accent('off')}' : '#ffffff'",
+    "value": f"{UNPOWERED} ? 'Off' : ({MIC_MUTED} ? 'Muted' : " + db_text(MIC_NOW) + ")",
+    "pct": f"{UNPOWERED} ? 0 : " + db_pct(MIC_NOW, MIC_MIN, MIC_MAX),
+    "color": f"{UNPOWERED} ? '{DIM}' : ({MIC_MUTED} ? '{accent('off')}' : '{accent('mic')}')",
+    "value_color": f"{UNPOWERED} ? '{DIM}' : ({MIC_MUTED} ? '{accent('off')}' : '#ffffff')",
     "badge": f"!({WING_ONLINE})",
+    "dim": UNPOWERED,
 }
 
 
@@ -576,6 +610,7 @@ def zone_display(zone):
         "pct": db_pct(ZONE_NOW[z], VOL_MIN, VOL_MAX),
         "color": f"{src} == 'Off' ? '{DIM}' : '{accent('audio')}'",
         "value_color": f"{src} == 'Off' ? '{DIM}' : '#ffffff'",
+        "dim": UNPOWERED,
     }
 
 
@@ -589,6 +624,29 @@ def scene_key(page, r, c, name, label=None, cat="audio"):
     s = next(x for x in SCENES if x[0] == name)
     return add(page, r, c, label=label or s[1], icon=s[2], cat=cat, does=f"Runs {name} on all five zones",
                down=[press(SCENE_LOC[name])], fb=[(scene_expr(s[3]), "active")])
+
+
+SOURCE_NOUN = {"Auditorium": "the auditorium feed", "Playlist": "music", "Bluetooth": "Bluetooth",
+               "Lobby Mix": "the lobby mix"}
+
+
+def source_key(page, r, c, scene, source, label, icon, cat="audio"):
+    """A toggle: plays its room scene, which replaces whatever else plays, or turns its source off when lit."""
+    return add(page, r, c, label=label, icon=icon, cat=cat, fb=[(plays(source), "active")],
+               down=[when(plays(source), [press(STOP_LOC[source])], [press(SCENE_LOC[scene])])],
+               does=f"Lit while {SOURCE_NOUN[source]} plays. Press to play {scene}, turning the audio system on if it "
+                    f"is off and replacing anything else playing. Press again to turn {SOURCE_NOUN[source]} off")
+
+
+def audio_power_key(page, r, c):
+    """The audio power key. Its color shows the state, green for on and red for off, and its label says what a
+    press does."""
+    add(page, r, c, label="Turn Audio Off", icon="power", cat="off",
+        fb=[(POWERED, "on"), (UNPOWERED, "active")], labels={"active": "Turn Audio On"},
+        down=[when(POWERED, [press(POWER_OFF)], [press(POWER_ON)])],
+        does="Green while the audio is on, saying Turn Audio Off: press to turn every zone off, then the amplifiers. "
+             "Red while it's off, saying Turn Audio On: press to turn the system on with nothing playing. "
+             "Auditorium and Music also turn it on")
 
 
 def lights_off_key(page, r, c):
@@ -624,21 +682,22 @@ def deck_dials(page, zone=None):
          f"Turn to set just the linear lights, {LIGHT_STEP}% a click, more when turned quickly. "
          "Push to put them back to the look", "lin")
     if zone is None:
-        strip(page, 2, VOLUME_DISPLAY, "Touch strip: what is playing, and its volume from normal")
+        strip(page, 2, VOLUME_DISPLAY, "Touch strip: what is playing, and its volume from normal, or Off")
         dial(page, 2, "Volume", [press(VOL_RESET)], [press(VOL_DOWN)], [press(VOL_UP)],
              "Turn for the volume of whatever is playing, 1 dB a click, more when turned quickly: the auditorium "
-             "feed, music, Bluetooth or the lobby mix. Push to put it back to normal", "vol")
+             "feed, music, Bluetooth or the lobby mix. Push to put it back to normal. Does nothing while the audio "
+             "is off or nothing plays", "vol")
     else:
         z, name, mx, db, *_ = zone
         strip(page, 2, zone_display(zone), f"Touch strip: {name} source and level")
-        dial(page, 2, name, [wing_level(f"/mtx/{mx}", db), setvar(f"z{z}_level", db)],
-             [zone_step(z, mx, -1)], [zone_step(z, mx, 1)],
-             f"Turn for {name} volume, 1 dB a click, more when turned quickly. Push to put {name} back to {db} dB",
-             f"z{z}")
-    strip(page, 3, MIC_DISPLAY, "Touch strip: the mic level, or Muted")
+        dial(page, 2, name, [when(POWERED, [wing_level(f"/mtx/{mx}", db), setvar(f"z{z}_level", db)])],
+             [when(POWERED, [zone_step(z, mx, -1)])], [when(POWERED, [zone_step(z, mx, 1)])],
+             f"Turn for {name} volume, 1 dB a click, more when turned quickly. Push to put {name} back to {db} dB. "
+             "Does nothing while the audio is off", f"z{z}")
+    strip(page, 3, MIC_DISPLAY, "Touch strip: the mic level, Muted, or Off while the audio is off")
     dial(page, 3, "Mics", [press(MIC_MUTE)], [press(MIC_DOWN)], [press(MIC_UP)],
          f"Turn for mic volume, 1 dB a click, more when turned quickly, up to {MIC_MAX} dB. "
-         "Push to mute or unmute the mics", "mic")
+         "Push to mute or unmute the mics. Does nothing while the audio is off", "mic")
 
 
 def ipad_key(page, r, c):
@@ -652,23 +711,21 @@ def build_pages():
     lights_off_key(1, 0, 0)
     for n, *_ in LOOKS:
         look_key(1, 0, n, n)
-    scene_key(1, 1, 0, "All Audio Off", cat="off")
-    scene_key(1, 1, 1, "Auditorium")
-    add(1, 1, 2, label="Music", icon="note", cat="music", fb=[(ANY_PLAYLIST, "active")],
-        down=[when(NONE_PLAYLIST, [press(SCENE_LOC["Music Inside"])])],
-        does="Plays the playlist inside, unless music is already playing")
+    audio_power_key(1, 1, 0)
+    source_key(1, 1, 1, "Auditorium", "Auditorium", "Auditorium", "church")
+    source_key(1, 1, 2, "Music Inside", "Playlist", "Music", "note", cat="music")
     nav(1, 1, 3, 2, "More", "more")
     deck_dials(1)
     # Page 2, more
-    scene_key(2, 0, 0, "Bluetooth")
-    scene_key(2, 0, 1, "Lobby Event")
+    source_key(2, 0, 0, "Bluetooth", "Bluetooth", "Bluetooth", "bluetooth")
+    source_key(2, 0, 1, "Lobby Event", "Lobby Mix", "Lobby Event", "mic")
     scene_key(2, 0, 2, "Music Everywhere", cat="music")
     add(2, 0, 3, label="Playlists", icon="playlist", cat="music", down=[setpage(3)], does="Opens Playlists",
         fb=[(ANY_PLAYLIST, "active")])
     nav(2, 1, 0, ZONES[0][4], "Zones", "sliders", "Opens the first zone page")
     add(2, 1, 1, label="Close Up", icon="closeup", cat="off", hold=(CLOSE_HOLD_MS, [press(CLOSE_UP)]),
-        does=f"Hold {CLOSE_HOLD_MS / 1000:g} seconds to turn off the lights and every zone, and leave iPad Mode",
-        fb=[(f"!({LIGHTS_ON}) && {AUDIO_OFF}", "active")])
+        does=f"Hold {CLOSE_HOLD_MS / 1000:g} seconds to turn off the lights and the audio system, and leave iPad Mode",
+        fb=[(f"!({LIGHTS_ON}) && {UNPOWERED}", "active")])
     ipad_key(2, 1, 2)
     nav(2, 1, 3, 1, "Home", "home")
     deck_dials(2)
@@ -686,10 +743,11 @@ def build_pages():
         z, name, mx, _, page, icon = zone
         for s, (source, _, label, sicon) in enumerate(SOURCES):
             if source == "Playlist":
-                acts = [press(MUSIC_START), wait(50), press(zone_block(z, s))]
+                acts = [press(POWER_ON), press(MUSIC_START), wait(50), press(zone_block(z, s))]
             else:
-                acts = [press(zone_block(z, s)), wait(200), press(MUSIC_STOP)]
-            add(page, 0, s, label=label, icon=sicon, cat="audio", does=f"{name} plays {source}", down=acts,
+                acts = [press(POWER_ON), press(zone_block(z, s)), wait(200), press(MUSIC_STOP)]
+            add(page, 0, s, label=label, icon=sicon, cat="audio", down=acts,
+                does=f"{name} plays {source}, turning the audio system on if it is off",
                 fb=[(f"$(custom:z{z}_src) == '{source}'", "active")])
         add(page, 1, 0, label=f"{name} Off", icon="mute", cat="off", does=f"Turns off {name}",
             down=[press(zone_block(z, 4)), wait(200), press(MUSIC_STOP)],
@@ -717,9 +775,10 @@ def trigger(tid, name, order, enabled, event, options, actions, condition=None, 
 
 
 def build_triggers():
-    trigger("startup_recovery", "Startup recovery", 0, True, "startup", {"delay": 5000}, [press(APPLY_FADE)],
-            does="Five seconds after Companion starts, fades the lights back to where they were. "
-                 "In iPad Mode, it keeps Companion's output at zero")
+    trigger("startup_recovery", "Startup recovery", 0, True, "startup", {"delay": 5000},
+            [press(APPLY_FADE), when(POWERED, [relay(True)], [relay(False)])],
+            does="Five seconds after Companion starts, fades the lights back to where they were, and sends the audio "
+                 "power state to the relay again so they agree. In iPad Mode, it keeps Companion's light output at zero")
     trigger("schedule_sunday", "Schedule: Sunday arrival", 1, False, "timeofday",
             {"time": "07:30:00", "days": [0]},
             [press(LOOK_LOC[3]), press(SCENE_LOC["Auditorium"])], DECK,
@@ -752,6 +811,7 @@ VARIABLES = {  # name: (description, default)
     "music_n": ("Number of the chosen playlist", "1"),
     "music_name": ("Name of the chosen playlist", "Morning"),
     **{f"z{z}_src": (f"{name} source, or Off", "Off") for z, name, *_ in ZONES},
+    "audio_power": ("1 while the audio system is on, 0 while the amplifiers are off", "0"),
     "turn_fast_ms": (f"Dial clicks closer together than this, in ms, move {TURN_FAST} steps each. 0 turns it off",
                      str(TURN_FAST_MS)),
     "turn_medium_ms": (f"Dial clicks closer together than this, in ms, move {TURN_MEDIUM} steps each. 0 turns it off",
@@ -813,6 +873,7 @@ GLYPHS = {
     "brighter": _sun_small(9) + '<path d="M16.5 12h5M19 9.5v5"/>',
     "speaker": f'<path d="{_SPEAKER}M15 9a4 4 0 0 1 0 6M17.5 6.5a7.5 7.5 0 0 1 0 11"/>',
     "mute": f'<path d="{_SPEAKER}M15.5 9.5l5 5M20.5 9.5l-5 5"/>',
+    "power": '<path d="M12 3v8.5M6.6 6.2a8 8 0 1 0 10.8 0"/>',
     "quieter": f'<path d="{_SPEAKER}M15.5 12h5"/>',
     "louder": f'<path d="{_SPEAKER}M15.5 12h5M18 9.5v5"/>',
     "note": '<path d="M9 18V6l11-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
@@ -848,9 +909,12 @@ SVG = 'xmlns="http://www.w3.org/2000/svg"'
 
 def tile_svg(icon, cat, state):
     """A key's artwork: a lit or resting tile with a large icon. The label is live text drawn on top."""
-    glow = state in ("active", "saved")
+    glow = state in ("active", "saved", "on")
     if state == "locked":
         top, bottom, glyph = LOCKED_ART
+    elif state == "on":  # a lit power key, green whatever the key's own color
+        p = PALETTE["power"]
+        top, bottom, glyph = p[3], p[4], "#ffffff"
     elif state == "saved":
         p = PALETTE["save"]
         top, bottom, glyph, icon = p[3], p[4], "#ffffff", "check"
@@ -1041,11 +1105,17 @@ def layers_for(k, images):
         s = k.show
         title = expr(s["title"]) if s.get("title_expr") else s["title"]
         pct = s["pct"]
+        title_color = accent(k.cat if k.cat in PALETTE else "audio")
+        if s.get("dim"):  # a panel that greys out while its dial does nothing
+            title_color = expr(f"{s['dim']} ? '{DIM}' : '{title_color}'")
+        panel = el_image("art", "Panel", 0, 0, 100, 100, img(images, f"strip-{k.cat}"))
+        if s.get("dim"):
+            panel["opacity"] = expr(f"{s['dim']} ? 35 : 100")
         layers = [
             el_canvas("none"),
-            el_image("art", "Panel", 0, 0, 100, 100, img(images, f"strip-{k.cat}")),
+            panel,
             el_text("title", "Title", 25, 6, 72 if not s.get("badge") else 46, 26, title, 82,
-                    accent(k.cat if k.cat in PALETTE else "audio"), halign="left", bold=True),
+                    title_color, halign="left", bold=True),
             el_text("value", "Value", 25, 31, 72, 40, expr(s["value"]), 100, expr(s["value_color"]),
                     halign="left", bold=True),
             el_box("track", "Track", 6, 79, 88, 9, TRACK, radius=100),
@@ -1167,6 +1237,11 @@ def export():
                      "config": {"prefix": f"https://{WIIM_IP}/", "proxyAddress": "", "authType": "none",
                                 "authUser": "", "authPassword": "", "rejectUnauthorized": False,
                                 "insecureHTTPParser": False}},
+            "power": {"label": "power", "moduleId": "generic-http", "enabled": True, "isFirstInit": False,
+                      "lastUpgradeIndex": 3, "sortOrder": 3, "updatePolicy": "stable",
+                      "config": {"prefix": f"http://{POWER_IP}/", "proxyAddress": "", "authType": "none",
+                                 "authUser": "", "authPassword": "", "rejectUnauthorized": True,
+                                 "insecureHTTPParser": False}},
         },
     }
 
@@ -1492,6 +1567,7 @@ ALLOWED = {  # (connection, definition): option names, taken from the module and
     ("wing", "fader-delta"): {"sel", "delta", *FADE},
     ("dmx", "set_complex"): {"params", "duration"},
     ("wiim", "get"): {"url", "header", "jsonResultDataVariable", "result_stringify", "statusCodeVariable"},
+    ("power", "get"): {"url", "header", "jsonResultDataVariable", "result_stringify", "statusCodeVariable"},
 }
 ELEMENT_PROPS = {  # from Companion 5.1.3 StyleLayersModel
     "canvas": {"decoration", "showStatusIcons"},
@@ -1667,6 +1743,8 @@ class Sim:
                 self.vars[o["name"]] = o["value"] if v["isExpression"] else self.text(v["value"])
             elif d == "set_page":
                 self.page = o["page"]
+            elif d == "get" and a["connectionId"] == "power":
+                self.log.append(("power", "on" if self.text(o["url"]).endswith("on=true") else "off"))
             elif d == "get":
                 self.log.append(("wiim", self.text(o["url"]).split("=", 1)[1]))
             elif a["connectionId"] == "wing" and not self.connected:
@@ -1889,7 +1967,8 @@ def tests():
        and s.log.count(start) == 1)
     s.press(SCENE_LOC["Music Everywhere"])
     s.press("1/1/2")
-    ok("Music does not cut back an Everywhere room", s.vars["z2_src"] == "Playlist")
+    ok("Music lit by Everywhere turns the music off everywhere", all(
+        s.vars[f"z{z}_src"] == "Off" for z, *_ in ZONES) and ("wiim", "setPlayerCmd:stop") in s.log)
     s = Sim()
     s.press("3/0/1")
     ok("playlist key in a silent room starts Inside", s.vars["z1_src"] == "Playlist"
@@ -1938,8 +2017,9 @@ def tests():
     s.turn("1/3/2", "right")
     ok("with mixed zones, Volume follows the first zone that is on", s.wing["bus15_level"] == 1.0
        and s.wing["bus14_level"] == 0.0)
-    # Zone and mic dials
+    # Zone and mic dials, with the audio system on and nothing playing
     s = Sim()
+    s.press("1/1/0")
     s.turn("4/3/2", "right")
     s.turn("4/3/2", "right")
     ok("zone dial moves only its zone", s.wing["mtx1_level"] == -4.0 and s.wing["mtx2_level"] == -10.0
@@ -1950,6 +2030,7 @@ def tests():
     s.turn("4/3/2", "right")
     ok("a zone dial lifts a zone from -oo", s.wing["mtx1_level"] == -89.0)
     s = Sim()
+    s.press("1/1/0")
     s.wing[f"bus{MIC_BUS}_level"] = 0.0
     s.turn("1/3/3", "right")
     ok("Mics stop at 0 dB", s.wing[f"bus{MIC_BUS}_level"] == 0.0)
@@ -1991,10 +2072,15 @@ def tests():
     s.press("2/1/1", held=True)
     ok("Close Up turns everything off and leaves iPad Mode", s.vars["light_mode"] == "deck" and s.channel(0) == 0
        and [s.hears(z) for z in range(1, 6)] == ["Off"] * 5)
+    ok("Close Up turns the audio system off", s.vars["audio_power"] == "0" and s.log[-1] == ("power", "off"))
     s = Sim()
     s.vars.update(lt_all="70", lt_linear="50")
     s.run(TRIGGERS["startup_recovery"]["control"]["actions"])
     ok("startup restores the lights", s.channel(0) == dmx_of(70, 50))
+    ok("startup sends the relay off while the audio is off", s.log[-1] == ("power", "off"))
+    s.vars["audio_power"] = "1"
+    s.run(TRIGGERS["startup_recovery"]["control"]["actions"])
+    ok("startup sends the relay on while the audio is on", s.log[-1] == ("power", "on"))
     s.vars["light_mode"] = "ipad"
     s.run(TRIGGERS["startup_recovery"]["control"]["actions"])
     ok("startup in iPad Mode keeps output at zero", s.channel(0) == 0)
@@ -2002,13 +2088,93 @@ def tests():
     ok("night clears iPad Mode and turns off", s.vars["light_mode"] == "deck" and s.vars["lt_all"] == "0")
     s = Sim()
     s.run(TRIGGERS["schedule_sunday"]["control"]["actions"])
-    ok("Sunday schedule: Lights 3 and the auditorium", s.channel(0) == 255 and s.hears(1) == "Auditorium")
+    ok("Sunday schedule: Lights 3 and the auditorium", s.channel(0) == 255 and s.hears(1) == "Auditorium"
+       and s.vars["audio_power"] == "1")
+    s.run(TRIGGERS["schedule_night"]["control"]["actions"])
+    ok("night schedule turns the audio system off", s.vars["audio_power"] == "0" and s.log[-1] == ("power", "off"))
+    # Audio power, and the source keys that toggle
+    lit = lambda st, loc: any(truthy(st.eval(x)) for x, state in KEYS[loc].fb if state == "active")  # noqa: E731
+
+    def label_of(st, loc):
+        """The label and art state a key shows now. Like Companion, a later feedback wins over an earlier one."""
+        k, shown = KEYS[loc], (KEYS[loc].label, "rest")
+        for x, state in k.fb:
+            if truthy(st.eval(x)):
+                shown = (k.labels.get(state, shown[0]), state)
+        return shown
+    s = Sim()
+    ok("the system starts off, with the power key red and saying Turn Audio On", s.vars["audio_power"] == "0"
+       and lit(s, "1/1/0") and label_of(s, "1/1/0") == ("Turn Audio On", "active"))
+    s.turn("1/3/3", "right")
+    s.run(KEYS["1/3/3"].down)
+    s.turn("4/3/2", "right")
+    s.run(KEYS["4/3/2"].down)
+    ok("while off, the Mics and zone dials do nothing", s.wing[f"bus{MIC_BUS}_level"] == MIC_START
+       and s.wing[f"bus{MIC_BUS}_mute"] == 0 and s.wing["mtx1_level"] == -6.0 and not s.log)
+    ok("while off, the Volume and Mics panels say Off and grey out", s.show("1/2/2", "value") == "Off"
+       and s.show("1/2/3", "value") == "Off" and s.show("1/2/3", "pct") == 0 and s.eval(KEYS["1/2/3"].show["dim"])
+       and s.eval(KEYS["1/2/2"].show["dim"]))
+    s.press("1/1/0")
+    ok("the power key, pressed while off, turns the system on with nothing playing", s.vars["audio_power"] == "1"
+       and label_of(s, "1/1/0") == ("Turn Audio Off", "on")
+       and s.log == [("power", "on")] and not lit(s, "1/1/0")
+       and [s.vars[f"z{z}_src"] for z, *_ in ZONES] == ["Off"] * 5)
+    ok("once on, the Mics panel shows its level", s.show("1/2/3", "value") == f"{MIC_START} dB"
+       and not s.eval(KEYS["1/2/3"].show["dim"]))
+    s = Sim()
+    s.press("1/1/1")
+    ok("Auditorium from off turns the system on, and the power key turns green", s.vars["audio_power"] == "1"
+       and label_of(s, "1/1/0") == ("Turn Audio Off", "on")
+       and s.log.count(("power", "on")) == 1 and s.hears(1) == "Auditorium" and lit(s, "1/1/1"))
+    s.log.clear()
+    s.press("1/1/1")
+    ok("Auditorium pressed again turns it off and leaves the system on", s.vars["audio_power"] == "1"
+       and [s.hears(z) for z in range(1, 6)] == ["Off"] * 5 and not lit(s, "1/1/1") and not lit(s, "1/1/0")
+       and ("power", "off") not in s.log)
+    s.press("1/1/1")
+    s.press("1/1/2")
+    ok("Music while Auditorium plays swaps them", lit(s, "1/1/2") and not lit(s, "1/1/1")
+       and [s.hears(z) for z in range(1, 6)] == SCENES[1][3])
+    s.press("1/1/1")
+    ok("Auditorium while Music plays swaps them back, and stops the player", lit(s, "1/1/1") and not lit(s, "1/1/2")
+       and ("wiim", "setPlayerCmd:stop") in s.log)
+    s.log.clear()
+    s.press("1/1/0")
+    ok("Turn Audio Off turns every zone off, then the amplifiers", s.vars["audio_power"] == "0"
+       and label_of(s, "1/1/0") == ("Turn Audio On", "active")
+       and [s.hears(z) for z in range(1, 6)] == ["Off"] * 5 and s.log[-1] == ("power", "off")
+       and not lit(s, "1/1/1"))
+    s = Sim()
+    s.press("1/1/1")
+    s.press("5/0/1")
+    s.log.clear()
+    s.press("1/1/1")
+    ok("Auditorium off leaves another zone's music playing", s.hears(2) == "Playlist" and s.hears(1) == "Off"
+       and ("wiim", "setPlayerCmd:stop") not in s.log)
+    s = Sim()
+    s.press("1/1/2")
+    ok("Music from off turns the system on, and the power key turns green", s.vars["audio_power"] == "1"
+       and label_of(s, "1/1/0") == ("Turn Audio Off", "on") and s.hears(1) == "Playlist")
+    for loc, source in (("2/0/0", "Bluetooth"), ("2/0/1", "Lobby Mix")):
+        s = Sim()
+        s.press(loc)
+        on = s.vars["audio_power"] == "1" and s.hears(1) == source and lit(s, loc)
+        s.press(loc)
+        ok(f"{source} toggles like Auditorium", on and s.hears(1) == "Off" and not lit(s, loc))
+    s = Sim()
+    s.press("6/0/2")
+    ok("a zone page source key turns the system on", s.vars["audio_power"] == "1" and s.hears(3) == "Bluetooth")
+    s = Sim()
+    s.press("3/0/3")
+    ok("a playlist key turns the system on", s.vars["audio_power"] == "1" and s.hears(1) == "Playlist")
     # Every display evaluates in every state without an error
-    states = [Sim(), Sim(), Sim(), Sim(connected=False)]
+    states = [Sim(), Sim(), Sim(), Sim(connected=False), Sim()]
     states[1].press("1/0/2")
     states[1].press(SCENE_LOC["Music Everywhere"])
+    states[2].press("1/1/0")
     states[2].press("2/1/2", held=True)
     states[2].wing.update({"mtx1_level": "-oo", f"bus{MIC_BUS}_mute": 1})
+    states[4].press("1/1/1")
     bad = []
     for st in states:
         for loc, c in CONTROLS.items():
@@ -2036,8 +2202,11 @@ def name_of(loc):
 
 
 CONDITIONS = {DECK: "the deck has the lights, not the iPad", NONE_PLAYLIST: "no zone is on Playlist",
-              ANY_PLAYLIST: "any zone is on Playlist", LIGHTS_ON: "the lights are on",
-              f"{DECK} && {LIGHTS_ON}": "the deck has the lights and they are on"}
+              LIGHTS_ON: "the lights are on", f"{DECK} && {LIGHTS_ON}": "the deck has the lights and they are on",
+              POWERED: "the audio system is on",
+              **{plays(source): f"any zone is on {source}" for source, *_ in SOURCES},
+              **{f"$(custom:z{z}_src) == '{source}'": f"{name} is on {source}"
+                 for z, name, *_ in ZONES for source, *_ in SOURCES}}
 
 
 def describe(actions, indent=0):
@@ -2070,6 +2239,10 @@ def describe(actions, indent=0):
                 out += describe(a["children"]["else_actions"], indent + 1)
         elif d == "set_complex":
             out.append(f"{pad}Art-Net to the ODE: `$(custom:dmx_cmd)`, fading {int(o['duration']) / 1000:g} s")
+        elif d == "get" and a["connectionId"] == "power":
+            on = o["url"].endswith("on=true")
+            out.append(f"{pad}Relay {'closes' if on else 'opens'}: the Furman sequences the amplifiers "
+                       f"{'on' if on else 'off'}")
         elif d == "get":
             out.append(f"{pad}WiiM `{o['url'].split('=', 1)[1]}`")
         elif d == "set-send-mute":
@@ -2142,13 +2315,17 @@ def write_doc(count, checks):
     a("| Target | Connection | Message | Example |\n| --- | --- | --- | --- |\n"
       f"| Wing Rack | `wing`, {WING_IP} | Wing OSC through the Behringer module | `/bus/14/send/MX1/on` = 1 |\n"
       f"| ODE Mk3 | `dmx`, {ODE_IP}, Art-Net universe {ARTNET_UNIVERSE} | Channel values through the Art-Net module | `1-8,166;9-32,166;` |\n"
-      f"| WiiM | `wiim`, https://{WIIM_IP}/ | HTTPS GET to `httpapi.asp?command=` | `MCUKeyShortClick:1` |\n")
+      f"| WiiM | `wiim`, https://{WIIM_IP}/ | HTTPS GET to `httpapi.asp?command=` | `MCUKeyShortClick:1` |\n"
+      f"| Amplifier power | `power`, http://{POWER_IP}/ | HTTP GET to a Shelly Pro 1 relay, wired to the Furman "
+      "sequencer's remote terminals | `rpc/Switch.Set?id=0&on=true` |\n")
     a("Key addresses read page/row/column from 0, the same form Companion uses. Rows and columns start at the top left.\n")
     a("On the Stream Deck +, rows 0 and 1 are the keys, row 2 is the touch strip, and row 3 is the dials.\n")
     a("## How it looks\n")
     a("Amber is lighting, warm white is the linear lights, blue is audio, violet is music, teal is the mics, purple "
       "is the iPad and red is off. A lit key, bright with a white icon, is the active choice. In iPad Mode, "
-      "lighting keys go grey and show a lock. A green key with a check mark has just saved a look.\n")
+      "lighting keys go grey and show a lock. A green key with a check mark has just saved a look. While the audio "
+      "system is off, the audio power key is red and says Turn Audio On, and the audio panels on the touch strip go "
+      "grey. While it is on, that key is green and says Turn Audio Off.\n")
     a("The touch strip shows a live panel above each dial: what the dial does, its value, and a level bar that moves "
       "as you turn it.\n")
     a("Labels are live text, so you can rename a key in Companion without touching its artwork. The artwork is in "
@@ -2175,6 +2352,29 @@ def write_doc(count, checks):
         a(f"| {page} | {name} | MX{mx} | `z{z}_src`, `z{z}_level` | {db} dB |")
     a("")
     a(page_table(first) + "\n")
+    a("## Audio power\n")
+    a("A Furman sequencer powers the amplifiers. Companion switches it through a network relay, a Shelly Pro 1, "
+      "whose contact is wired to the Furman's remote terminals. Closing the contact sequences the amplifiers on, "
+      "and opening it sequences them off. The Wing Rack, the WiiM and the Bluetooth receiver stay on all the time, "
+      "so Companion can always reach them and a source plays as soon as the amplifiers are up. "
+      "[Audio setup](06-audio-setup.md#amplifier-power) has the wiring.\n")
+    a("`audio_power` holds the state: 1 while the system is on, 0 while it is off. Two blocks change it, "
+      f"`{POWER_ON}` Power On and `{POWER_OFF}` Power Off, and only they talk to the relay.\n")
+    a("| Key | While the audio is off | While it's on |\n| --- | --- | --- |\n"
+      "| Audio power key | Red, saying Turn Audio On. Press to turn the system on, with nothing playing | Green, "
+      "saying Turn Audio Off. Press to turn every zone off, stop the music, then turn the amplifiers off |\n"
+      "| Auditorium, Music, Bluetooth, Lobby Event | Press to turn the system on and play that source | Lit while "
+      "its source plays anywhere. Press a lit key to turn its source off, leaving the system on. Press another to "
+      "swap to it |\n"
+      "| Everywhere, Inside, a playlist, a zone's source | Press to turn the system on and play | Plays, as before |\n"
+      "| Volume and Mics dials, zone dials | Do nothing. Their panels say Off and go grey | Work as usual |\n"
+      "| Close Up, and the night schedule | Stay off | Turn the lights and the audio system off |\n")
+    a("Only Auditorium, Music, Bluetooth and Lobby Event toggle. Everywhere, Inside and the playlist keys choose "
+      "where and what plays, so pressing them again keeps playing. On a zone page, the zone's Off key turns that "
+      "zone off.\n")
+    a("Five seconds after Companion starts, the startup trigger sends the relay the state in `audio_power`, so the "
+      "two always agree. To use a different power switch, such as Furman's own BB-RS232 adapter, change only "
+      "those two blocks and that trigger.\n")
     a("## Dial speed\n")
     a(f"Every dial speeds up when it's turned quickly. A slow click moves one step: {LIGHT_STEP}% for the lights, "
       f"1 dB for audio. Clicks closer together than `turn_medium_ms` move {TURN_MEDIUM} steps each, and closer than "
@@ -2204,7 +2404,7 @@ def write_doc(count, checks):
     a("No surface shows these pages. Keep them where they are, because every real key points to them by address.\n")
     a("### Page 20: Zones 1 to 4\n")
     a(library_table(20) + "\n")
-    a("### Page 21: Zone 5, music and rooms\n")
+    a("### Page 21: Zone 5, music, rooms and power\n")
     a(library_table(21) + "\n")
     a("### Page 22: Lights and dials\n")
     a(library_table(22) + "\n")
@@ -2215,7 +2415,8 @@ def write_doc(count, checks):
         a(f"| {c['options']['name']} | {'On' if c['options']['enabled'] else 'Off'} | {t_['does']} |")
     a("\nThe three schedule triggers import turned off. Set their times and turn them on after launch.\n")
     a("## Custom variables\n")
-    a("All of these keep their value through a restart, except `lt_saved`.\n")
+    a("All of these keep their value through a restart, except " +
+      ", ".join(f"`{n}`" for n in VARIABLES if n in PERSIST_OFF) + ".\n")
     a("| Variable | Holds | Starts as |\n| --- | --- | --- |")
     for name, (d, v) in VARIABLES.items():
         a(f"| `{name}` | {d} | {v or '(empty)'} |")
@@ -2232,7 +2433,9 @@ def write_doc(count, checks):
       "- **Change a normal level.** Edit `21/0/5`.\n"
       "- **Change the patch.** Edit `22/1/0`, as described in Lighting math.\n"
       "- **Add a station.** Add the surface in Companion, give it its own surface group starting on page 1, and untick "
-      "the pages it shouldn't use. Nothing in the pages changes.\n")
+      "the pages it shouldn't use. Nothing in the pages changes.\n"
+      f"- **Use a different power switch.** Edit `{POWER_ON}` Power On, `{POWER_OFF}` Power Off and the startup "
+      "trigger. Every key that powers the system goes through those two blocks.\n")
     a("After any change, export the configuration from Companion and commit it next to this file. From then on, that export is the "
       "live copy and `build.py` is only a record of the first version.\n")
     DOC.write_text("\n".join(t), encoding="utf-8", newline="\n")
@@ -2275,7 +2478,8 @@ def preview(ctrl, sim, w, h):
         if not truthy(g["enabled"]):
             continue
         x, y, ww, hh = g["x"] * w / 100, g["y"] * h / 100, to_num(g["width"]) * w / 100, g["height"] * h / 100
-        box = f"position:absolute;left:{x:.1f}px;top:{y:.1f}px;width:{ww:.1f}px;height:{hh:.1f}px"
+        box = (f"position:absolute;left:{x:.1f}px;top:{y:.1f}px;width:{ww:.1f}px;height:{hh:.1f}px;"
+               f"opacity:{to_num(g['opacity']) / 100:g}")
         if el["type"] == "box":
             radius = g["cornerRadius"] / 100 * min(ww, hh) / 2
             out.append(f'<div style="{box};background:{css_color(g["color"])};border-radius:{radius:.1f}px"></div>')
@@ -2377,13 +2581,15 @@ def main():
         print(f"config: {out.stat().st_size // 1024} KB, artwork: {len(images)}")
         IMAGES.mkdir(exist_ok=True)
         write_doc(len(KEYS), count)
-        live, ipad = sample_state(), sample_state(ipad=True)
+        live, ipad, off = sample_state(), sample_state(ipad=True), sample_state()
+        off.press("1/1/0")
         for cards, name, width, height, title, note in (
                 ([(1, "Page 1: Home", live), (2, "Page 2: More", live), (3, "Page 3: Playlists", live),
-                  (4, "Page 4: Zone Mains", live), (1, "Home in iPad Mode", ipad)],
+                  (4, "Page 4: Zone Mains", live), (1, "Home in iPad Mode", ipad), (1, "Home with the audio off", off)],
                  "stream-deck-pages", 1540, 1060, "Stream Deck + pages, shared by every station",
                  "The touch strip shows each dial's value live. Shown with Lights 2 at 80%, music playing inside, "
-                 "and the mics at -8 dB. The last card shows the lights locked in iPad Mode."),):
+                 "and the mics at -8 dB. The last two cards show the lights locked in iPad Mode, and the audio "
+                 "system off, with the power key red and saying Turn Audio On, and the Volume and Mics dials greyed out."),):
             page = layout(cards, tmp / name, width, title, note)
             target = IMAGES / f"{name}.png"
             chrome(profile, f"--screenshot={target}", f"--window-size={width + 56},{height}",

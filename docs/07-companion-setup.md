@@ -19,7 +19,7 @@ Companion holds the button layouts, the logic and the lights. Every page, artwor
 
 1. Open [Import/Export](https://github.com/bitfocus/companion/blob/main/docs/user-guide/3_config/import-export.md) and choose [lobby.companionconfig](../config/stream-deck/lobby.companionconfig).
 2. On the **Full import** tab, leave every available category selected, including the **Image Library**, and choose **Full Reset then Import**. Only do this on a new install, because it replaces what is there.
-3. Open Connections and confirm the three below. Companion uses the newest installed version of each module, so if one reports a missing module, install it from the Modules page.
+3. Open Connections and confirm the four below. Companion uses the newest installed version of each module, so if one reports a missing module, install it from the Modules page.
 4. Run [bench test 13](09-testing.md).
 
 | Connection | Module | Settings in the file |
@@ -27,8 +27,9 @@ Companion holds the button layouts, the logic and the lights. Every page, artwor
 | `wing` | [behringer-wing](https://github.com/bitfocus/companion-module-behringer-wing) | Desk IP 192.168.50.20, desk type Wing Rack |
 | `dmx` | [generic-artnet](https://github.com/bitfocus/companion-module-generic-artnet) | Receiver 192.168.50.31, the ODE, universe 0 |
 | `wiim` | [generic-http](https://github.com/bitfocus/companion-module-generic-http) | Base URL `https://192.168.50.40/`, unauthorized certificates accepted |
+| `power` | [generic-http](https://github.com/bitfocus/companion-module-generic-http) | Base URL `http://192.168.50.45/`, the Shelly relay that switches the amplifiers' Furman |
 
-The WiiM uses a self-signed certificate, which is why the file accepts it. The file holds pages, variables, triggers, connections, 60 artwork images, the Elgato Stream Deck surface integration, and four surface groups. It doesn't hold the decks themselves or passwords, so add those next.
+The WiiM uses a self-signed certificate, which is why the file accepts it. The file holds pages, variables, triggers, connections, 63 artwork images, the Elgato Stream Deck surface integration, and four surface groups. It doesn't hold the decks themselves or passwords, so add those next.
 
 Companion 5 drives USB Stream Decks through a surface integration. A full reset replaces the integrations with the ones in the file, which is why the file carries the Elgato one. An import that resets surfaces from a file without it leaves every Stream Deck showing Offline.
 
@@ -57,7 +58,7 @@ Every station starts with every page. To keep a door to the basics, open **Surfa
 
 | Page | Holds | Locking it out stops |
 | --- | --- | --- |
-| 1, Home | Lights Off, Lights 1 to 3, Audio Off, Auditorium, Music, and the four dials | Keep it. Every station needs it |
+| 1, Home | Lights Off, Lights 1 to 3, the audio power key, Auditorium, Music, and the four dials | Keep it. Every station needs it |
 | 2, More | Bluetooth, Lobby Event, Music Everywhere, Playlists, Zones, Close Up and iPad Mode | Leaving iPad Mode, Close Up, and the pages below, which are only reached from More |
 | 3, Playlists | The four playlists | Changing the playlist |
 | 4 to 8 | One zone each | Changing a single zone's source or level |
@@ -97,7 +98,7 @@ The Library is why this stays maintainable. Each real key runs a Library block w
 
 | Top row | Lights Off | Lights 1 | Lights 2 | Lights 3 |
 | --- | --- | --- | --- | --- |
-| **Bottom row** | **Audio Off** | **Auditorium** | **Music** | **More** |
+| **Bottom row** | **Turn Audio Off**, or **Turn Audio On** | **Auditorium** | **Music** | **More** |
 | **Dials** | **All Lights** | **Linear** | **Volume** | **Mics** |
 
 The touch strip shows each dial's value and a level bar above it. The first two dials and the last one do the same thing on every page. The third dial is the volume of whatever the page is about: whatever is playing on Home, More and Playlists, or one zone on a zone page.
@@ -112,6 +113,8 @@ The touch strip shows each dial's value and a level bar above it. The first two 
 
 Every dial speeds up when it's turned quickly. A slow click moves one step, as above. Clicks less than 120 ms apart move 2 steps each, and less than 50 ms apart move 4. Turning the other way, or another dial, starts slow again, and levels still stop at their limits. Each turn works this out from Companion's `$(this:delta)`, the clicks the deck reported, and the time since the last click.
 
+While the audio system is off, the Volume, Mics and zone dials do nothing, and their panels say Off and go grey.
+
 To change the feel, set `turn_medium_ms` and `turn_fast_ms` on the Variables page. Raise them to speed up sooner, or set both to 0 for one step a click. [Stream Deck pages](14-stream-deck-pages.md#dial-speed) has the details.
 
 Tapping a Lights key plays it. Holding one for 3 seconds saves the lights as they are now into it, and the key turns green and says Saved.
@@ -122,9 +125,25 @@ Companion keeps its own copy of every zone level, each source fader, the mic lev
 
 The keys don't show Companion's status marks, such as the red ! for a device it can't reach or the green arrow while a key's actions run. The NO WING badge and the Connections page cover that instead.
 
+## Audio power
+
+The bottom row of Home turns the audio system on and off, as well as choosing what plays. The first key shows the state by its color, and its label says what a press does. A Furman sequencer powers the amplifiers, and Companion switches it through the `power` connection, a network relay wired to the Furman's remote terminals. [Audio setup](06-audio-setup.md#amplifier-power) has the wiring.
+
+| Key | While the audio is off | While it's on |
+| --- | --- | --- |
+| Audio power key | Red, saying Turn Audio On. Press to turn the system on, with nothing playing | Green, saying Turn Audio Off. Press to turn every zone off, stop the music, then turn the amplifiers off |
+| Auditorium, Music, Bluetooth, Lobby Event | Press to turn the system on and play that source | Lit while its source plays anywhere. Press a lit key to turn its source off, leaving the system on. Press another to swap to it |
+| Everywhere, Inside, a playlist, a zone's source | Press to turn the system on and play | Plays, as before |
+| Volume, Mics and zone dials | Do nothing. Their panels say Off and go grey | Work as usual |
+| Close Up, and the night schedule | Stay off | Turn the lights and the audio system off |
+
+`audio_power` holds the state, 1 for on and 0 for off. Only two Library blocks talk to the relay, `21/3/0` Power On and `21/3/1` Power Off, so a different power switch means editing those two and the startup trigger.
+
+Sound starts once the Furman has brought the amplifiers up, so keep its delay short, as Audio setup describes. The Wing Rack, the WiiM and the Bluetooth receiver stay on all the time, so Companion never loses them.
+
 ## The whole-room buttons
 
-Each one runs one Library block per zone and resets every matrix fader to its normal level. Because they set every zone, pressing any of them resets the room. These zone choices are starting points, and you change one by editing its block on row 2 of page 21. The mics reach every zone that's on, whatever its source.
+Each one runs one Library block per zone and resets every matrix fader to its normal level. Because they set every zone, pressing any of them resets the room. Auditorium, Music, Bluetooth and Lobby Event also toggle, as [Audio power](#audio-power) describes. These zone choices are starting points, and you change one by editing its block on row 2 of page 21. The mics reach every zone that's on, whatever its source.
 
 | Button | Mains | Outdoor | Soffit | Bathrooms | Vestibule |
 | --- | --- | --- | --- | --- | --- |
@@ -133,7 +152,7 @@ Each one runs one Library block per zone and resets every matrix fader to its no
 | Music, Everywhere | Playlist | Playlist | Playlist | Playlist | Playlist |
 | Lobby Event | Lobby Mix | Off | Off | Lobby Mix | Lobby Mix |
 | Bluetooth | Bluetooth | Off | Off | Bluetooth | Bluetooth |
-| Audio Off | Off | Off | Off | Off | Off |
+| Turn Audio Off, before the amplifiers go off | Off | Off | Off | Off | Off |
 
 The player follows the zones. It starts when the first zone goes to Playlist, and it stops when the last zone leaves. Pressing a playlist in a silent room also runs Music, Inside, so a volunteer always hears a result.
 
@@ -151,11 +170,11 @@ Any station that can open More can leave iPad Mode. Lock the doors out of More t
 
 ## Close Up
 
-Hold **Close Up** on the More page for 1.5 seconds to turn off the lights and every zone. It also leaves iPad Mode, so the doors can't stay locked.
+Hold **Close Up** on the More page for 1.5 seconds to turn off the lights and the audio system. It also leaves iPad Mode, so the doors can't stay locked.
 
 ## The startup trigger
 
-Companion sends the lights, so a restart matters. Five seconds after Companion starts, the **Startup recovery** trigger fades the lights back to where they were. In iPad Mode it keeps Companion's output at zero.
+Companion sends the lights, so a restart matters. Five seconds after Companion starts, the **Startup recovery** trigger fades the lights back to where they were. In iPad Mode it keeps Companion's light output at zero. It also sends the audio power state to the relay again, so the two agree.
 
 ## Turn on the schedule after launch
 
@@ -165,7 +184,7 @@ The file includes three time-of-day triggers, turned off. Set their times, then 
 | --- | --- |
 | Sunday, before first arrivals | Lights 3 and the auditorium feed |
 | Weekday opening time | Lights 2 and music inside |
-| Every night | Close Up, which also leaves iPad Mode |
+| Every night | Close Up, which also turns the audio system off and leaves iPad Mode |
 
 ## Set up backups
 

@@ -70,6 +70,23 @@ No zone listens to Bluetooth by default, so a stray pairing plays nowhere.
 14. With a mic in the room and Bus 13 at 0 dB, set each mic channel's level just below feedback in the loudest zone. The Mic dial stops at 0 dB, so a volunteer can't push the mics into feedback.
 15. Save this as a snapshot called Lobby Base, and keep a copy in the repo.
 
+## Amplifier power
+
+A [Furman CN-1800S](https://furmanpower.com/products/cn-1800s) sequencer powers the amplifiers. Companion switches it through a [Shelly Pro 1](https://us.shelly.com/collections/smart-relays) relay, whose dry contact is wired to the Furman's remote terminals. These steps follow the [CN-1800S manual](https://www.markertek.com/Attachments/Manuals/FURMAN/CN-1800S-Manual.pdf), so check them against the manual for the unit you buy.
+
+1. Plug the amplifiers into the Furman's DELAY 2 and DELAY 3 outlets, as Furman recommends for amplifiers.
+2. Plug the Wing Rack into an UNSWITCHED outlet. Keep the WiiM and the Bluetooth receiver on always-on power too, so music starts as soon as Music is pressed. The CN-1800S has three unswitched outlets, two at the back and one at the front.
+3. Set DIP switch 7 to maintained, MNT, and DIP switch 5 to 12V ON. A closed contact between the +12V and REM terminals then turns the amplifiers on, and an open one turns them off.
+4. The factory delay is about 30 seconds between outlet banks, which would make a source key feel dead. Set DIP switches 1 to 3 down and turn the DLY ADJ control fully counterclockwise, for the shortest delay the unit allows. Time it during bench test 15.
+5. Wire the Shelly's two relay output terminals to +12V and REM, with 24 AWG wire.
+6. Give the Shelly its static address, 192.168.50.45, and set its power-on state to restore the last state.
+7. Turn the Furman's key switch to REMOTE. ON keeps the amplifiers on whatever Companion says, and OFF keeps them off. That's the manual fallback if the relay fails.
+8. From a browser, open `http://192.168.50.45/rpc/Switch.Set?id=0&on=true`. The DELAY lights come on in turn. `on=false` turns them off in reverse.
+
+Turn Audio Off turns every zone off first, then waits half a second before it opens the relay, so the amplifiers never switch with signal on them. The [Shelly API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Switch) documents the command.
+
+If the fire alarm contractor requires audio to stop on alarm, wire the alarm's dry contact to the Furman's FORCE OFF terminals. After a Force Off, turn the key switch to OFF and back to REMOTE to reset it.
+
 ## Protect the zones from scene recalls
 
 A snapshot recall can overwrite zone settings, so protect them on purpose.

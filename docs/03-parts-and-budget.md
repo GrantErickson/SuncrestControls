@@ -1,6 +1,6 @@
 # Parts list and budget
 
-The control electronics come to about $2,210 for three door stations. About $1,640 comes from retail listings and about $570 is an assumption. Check prices before ordering.
+The control electronics come to about $2,280 for three door stations. About $1,710 comes from retail listings and about $570 is an assumption. Check prices before ordering.
 
 | Item | Qty | Each (USD) | Total (USD) | Job | Price basis |
 | --- | --- | --- | --- | --- | --- |
@@ -12,8 +12,11 @@ The control electronics come to about $2,210 for three door stations. About $1,6
 | Fanless mini PC with SSD | 1 | 250 | 250 | Runs Companion, which now also sends the lights | Assumed |
 | Managed PoE switch, 8 or more ports | 1 | 170 | 170 | AV network | Assumed |
 | UPS | 1 | 150 | 150 | Keeps controls up through power blips | Assumed |
+| [Shelly Pro 1](https://us.shelly.com/collections/smart-relays) | 1 | 70 | 70 | Network relay that lets Companion switch the Furman, and so the amplifiers. Get the model with a LAN port | Listed |
 
 This excludes door faceplates, cables, labor, and an access point if the building doesn't already have one for the AV network. The Wing Rack, amps and speakers are already planned separately.
+
+The [Furman CN-1800S](https://furmanpower.com/products/cn-1800s) sequencer that powers the amplifiers lists at $809.95, and dealers sell it from about $725. It belongs with the amps, so it isn't in the total. If the amplifiers draw more than 15 A together, the CN-2400S is the 20 A model.
 
 Plan on one spare Stream Deck + and one spare dock once the design is proven. They are the parts most exposed to the public, and because every station uses the same deck, one spare covers them all.
 

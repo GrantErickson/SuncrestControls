@@ -12,10 +12,12 @@ The church's broader music license settles the licensing question, so these rema
 - [ ] Fill in the real DMX patch in `22/1/0` Compute DMX, from the patch sheet
 - [ ] Walk the room and save Lights 1 to 3 by holding each key
 - [ ] Confirm the default zone choices for each whole-room button
-- [ ] Ask the fire alarm contractor whether audio must mute on alarm
+- [ ] Ask the fire alarm contractor whether audio must mute on alarm. If it must, wire the alarm's contact to the Furman's FORCE OFF terminals
+- [ ] Add up the amplifiers' current draw, and choose the Furman CN-1800S, 15 A, or CN-2400S, 20 A
+- [ ] Set the Furman's delay short, so sound starts within a few seconds of a source key
 - [ ] Confirm battery lights come on with no help from DMX
 - [ ] Confirm the Denon DN-200BR is still available, or pick another receiver with line outputs
 - [ ] Confirm the starting matrix levels and the four playlist names
-- [ ] Pass all 14 bench tests, including the first real import of the Stream Deck file and test 4, what the ODE does when Companion stops
+- [ ] Pass all 15 bench tests, including the first real import of the Stream Deck file and test 4, what the ODE does when Companion stops
 - [ ] Set the mic channel levels so Bus 13 at 0 dB stays below feedback in every zone
 - [ ] Choose whether swiping the touch strip turns pages. The setup turns it off

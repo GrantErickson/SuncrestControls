@@ -18,9 +18,9 @@ The top row is the lights, the bottom row is the sound, and the dials fine-tune 
 | --- | --- |
 | Lights Off | The lights fade out |
 | Lights 1, 2 or 3 | The lights fade to that look |
-| Audio Off | Every speaker goes quiet |
-| Auditorium | Inside speakers play the service |
-| Music | Inside speakers play the playlist |
+| Turn Audio Off | Everything goes quiet and the amplifiers turn off. The key turns red and says **Turn Audio On**. Press it to turn the sound system back on |
+| Auditorium | Inside speakers play the service. Press again to stop it |
+| Music | Inside speakers play the playlist. Press again to stop it |
 | More | Bluetooth, Lobby Event, music everywhere, playlists, single areas, Close Up and iPad Mode |
 
 | Dial | Turn | Push |
@@ -29,6 +29,10 @@ The top row is the lights, the bottom row is the sound, and the dials fine-tune 
 | Linear | Just the long ceiling lights | Back to normal |
 | Volume | Whatever is playing, such as the music or the auditorium. The panel names it and says Normal, or how far from it | Back to normal |
 | Mics | The wireless mics | Mute or unmute |
+
+The audio key is green while the sound system is on and red while it's off. Auditorium and Music turn the sound system on by themselves, so you never need to turn it on first, and the audio key turns green. Pressing one while the other plays swaps them. The sound starts a few seconds later, once the amplifiers are up.
+
+While the audio key is red, the Volume and Mics dials do nothing, and their panels say Off.
 
 Turn a dial slowly for small changes. Turn it quickly to move further.
 
@@ -43,7 +47,7 @@ When you leave for the night, press **More**, then hold **Close Up** until every
 1. Pair your phone with the receiver in the rack.
 2. Start the music on your phone.
 3. Press **More**, then **Bluetooth**.
-4. When you finish, press **Music** or **Auditorium** on the main page.
+4. When you finish, press **Bluetooth** again to stop it, or press **Music** or **Auditorium** on the main page.
 
 ## Changing the music
 
@@ -71,7 +75,8 @@ Every door and the schedule use the new look straight away. If you change your m
 | Lights keys are grey with a lock | Same as above |
 | Door buttons don't change the lights | Use the rack station, then call your technical contact |
 | One area has no sound | Press **More**, then **Zones**, pick the area, and check it isn't Off |
-| Nobody can hear the mics | Check the Mics panel on the rack. If it says **Muted**, push the Mics dial |
+| No sound, and the audio key is red | The sound system is off. Press **Auditorium** or **Music**, or **Turn Audio On** to turn it on with nothing playing |
+| Nobody can hear the mics | Check the Mics panel on the rack. If it says **Off**, the sound system is off, so turn it on as above. If it says **Muted**, push the Mics dial |
 | The Volume or Mics panel says **NO WING** | The rack can't reach the sound desk. Call your technical contact |
 | Music stopped | Open the WiiM Home app and check the internet |
 | Everything is dead | Check the UPS in the rack |

@@ -19,7 +19,8 @@ The design is not final until the bench tests pass. Those tests are cheap, and t
 | 11 | Spotify playlists, a few to choose from | A streaming player with selectable playlists, under the church music license |
 | 12 | Bluetooth at the rack | A receiver in the rack, feeding one Wing input |
 | 13 | Technical people exist, lay people change content | Lay people save a light look by holding its key, and change playlists outside Companion |
-| 17, 18 | A Stream Deck + at the rack, with a simple main page | Lights Off and Lights 1 to 3 on top, Audio Off, Auditorium, Music and More below |
+| 17, 18 | A Stream Deck + at the rack, with a simple main page | Lights Off and Lights 1 to 3 on top, the audio power key, Auditorium, Music and More below |
 | 20 | Dials for all lights, linear lights, volume and mics. Mics always on | Companion sends the lights itself, and the mics reach every zone through their own bus |
 | 28 | Volume follows what is selected, not the mains | The Volume dial moves the fader of whatever is playing |
 | 29 | Every station is a Stream Deck +, with the same functionality | All stations share one set of pages, and you lock doors out of pages in Companion |
+| 31, 32 | The audio key turns off the rack power and shows whether it's on. Auditorium and Music are exclusive toggles that turn it on | A Furman sequencer powers the amplifiers, switched by Companion through a network relay. The audio key is green and says Turn Audio Off while the audio is on, and red and says Turn Audio On while it's off. The audio dials rest while it's off |

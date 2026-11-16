@@ -8,7 +8,7 @@ Companion holds the looks, the Wing Rack holds the zones, and the iPad takes ove
 
 ## Design rules
 
-- **Buttons set a fixed state.** Whole-room buttons set every zone, and never toggle. That makes reset reliable after someone uses the Wing app.
+- **Buttons set a known state.** Whole-room buttons set every zone, which makes reset reliable after someone uses the Wing app. Auditorium, Music, Bluetooth and Lobby Event also toggle, so pressing a lit one turns its source off. The audio power key turns the whole system off and back on, and is green while it's on and red while it's off.
 - **Lay people never open Companion.** They save a light look by holding its key, and change playlists outside Companion.
 - **Each job has one home.** A look lives in two Companion variables, the patch lives in one block, and each room scene lives in one block. Every key points at those blocks.
 
@@ -22,8 +22,11 @@ Companion holds the looks, the Wing Rack holds the zones, and the iPad takes ove
 | Wing Rack | All lobby audio stops | No fallback, so it must stay powered |
 | WiiM | Playlist stops | Use Bluetooth or the auditorium feed |
 | Network switch | All stations stop responding, and the lights follow the ODE's lost-source behavior | Replace it, and keep it on the UPS |
+| Power relay | The audio power key and the source keys can't turn the amplifiers on or off | Turn the Furman's key to ON, or to OFF at night |
 
 The Companion host and the switch now carry the lights, so both stay on the UPS. The startup trigger brings the last look back 5 seconds after Companion starts.
+
+Only the amplifiers are ever switched off. A Furman sequencer powers them, and Companion switches it through a network relay on its remote terminals. The Wing Rack, the WiiM and the Bluetooth receiver stay on, so the controls never lose them and a source plays as soon as the amplifiers are up.
 
 ## Why not Springtree
 

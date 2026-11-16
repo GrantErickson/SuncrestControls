@@ -70,6 +70,7 @@
   <rect class="box" x="919" y="650" width="382" height="126" rx="12"/>
   <text class="title" x="941" y="689">Amps and speakers</text>
   <text class="line" x="941" y="725">One amp channel per zone</text>
+  <text class="line" x="941" y="753">Furman power, switched by Companion</text>
 
   <path d="M481 830H546" stroke="#c4c2b8" stroke-width="2" marker-end="url(#arrow)"/>
   <text class="tag" x="570" y="837">Control message</text>
