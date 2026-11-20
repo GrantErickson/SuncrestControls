@@ -82,6 +82,7 @@ Pleas ask questions and help me work through the best technical solution for thi
 30. **Dial speed (2026-11-15):** The dials move one number per detent. Turned quickly they should skip ahead, and turned slowly they should move one at a time.
 31. **Rack power (2026-11-16):** Rack power switching, probably from Furman, turns off when Audio Off is pressed. Auditorium turns the system on if it's off and plays the auditorium, and Music does the same for music. Audio Off powers the audio system down, and the Volume and Mics dials show as off and disabled, working only while the system is on. Audio Off becomes a toggle that turns the system back on. Auditorium and Music are exclusive toggles: press once for on and again for off, and pressing one while the other is on swaps them.
 32. **Audio key look (2026-11-16):** The audio button should change when the audio comes on, to show that it's on. While it's off and highlighted, it should say Turn Audio On. Pressing Auditorium or Music should turn on the audio. The first version wasn't intuitive.
+33. **Home look (2026-11-19):** The buttons on the main page could look better. Maybe a cool background image that spans them all, and better all around, with more color and polish.
 
 ## Decision log
 
@@ -89,6 +90,7 @@ Newest first. Add a row whenever a decision is made or changed.
 
 | Date | Decision | Status |
 |---|---|---|
+| 2026-11-19 | Home's eight keys share one picture, the sun cresting a ridge at dawn. Over the lights row the sky brightens from Lights Off, under the moon, to Lights 3, and the audio keys stand on the ridges. The touch strip is a lake reflecting the sky. A key that is on glows in its own color over its piece of the picture, with a bright ring. The picture allows for the bezel between keys through `KEY_GAP` in build.py, which is an estimate. Other pages keep their plain tiles for now | Proposed, pending a look on the hardware |
 | 2026-11-16 | The audio power key shows the state by color and says what a press does: green with Turn Audio Off while the audio is on, red with Turn Audio On while it's off. It turns green as soon as Auditorium or Music turns the audio on | Decided |
 | 2026-11-16 | Audio Off turns every zone off, then powers the amplifiers down, and stays lit while they are off. Its look and label changed the same day, in the row above. Pressed again it turns the system on with nothing playing. Auditorium, Music, Bluetooth and Lobby Event are exclusive toggles that turn the system on. Everywhere, Inside, playlists and zone keys also turn it on. The Volume, Mics and zone dials do nothing while it's off, and their panels say Off. Close Up and the night schedule power it down | Decided |
 | 2026-11-16 | A Furman CN-1800S sequencer powers the amplifiers, with its delay set short. Companion switches it through a Shelly Pro 1 relay on the Furman's remote terminals, in maintained mode. The Wing Rack, WiiM and Bluetooth receiver stay on all the time | Proposed, pending bench test 15 and the amplifiers' current draw |

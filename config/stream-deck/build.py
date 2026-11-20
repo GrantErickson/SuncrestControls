@@ -954,17 +954,226 @@ def strip_svg(cat, icon):
             f'<g transform="translate(9,10) scale(1.3)" color="{color}" {_S}>{GLYPHS[icon]}</g></svg>')
 
 
+# ---------------------------------------------------------------- Home scene
+# Home's eight keys share one picture, the sun cresting a ridge at dawn, cut into a piece per key. Over the lights
+# row the sky brightens from Lights Off, under the moon, to Lights 3, nearest the sun. The audio keys stand on the
+# ridges, with the sun about to clear the ridge behind More, and the touch strip below is a lake catching the
+# colors. A lit key glows in its own color over its piece of the picture, with a bright ring, so what is on still
+# reads at a glance.
+SCENE_PAGES = {1}
+KEY_PX = 144
+KEY_GAP = 48  # the bezel between two keys, in key pixels, so the picture lines up across it: 144 x gap / key width
+SCENE_W, SCENE_H = 4 * KEY_PX + 3 * KEY_GAP, 2 * KEY_PX + KEY_GAP
+LOW = KEY_PX + KEY_GAP  # top of the audio row
+STRIP_W, STRIP_H = 800, 100
+SUN_X, SUN_Y, SUN_R = 3 * LOW + 104, LOW + 46, 30
+SKY = [(0, "#0a1442"), (.2, "#172b80"), (.42, "#4234a6"), (.6, "#93399c"), (.76, "#dc4f72"), (.89, "#ff8650"),
+       (1, "#ffb65a")]
+# Ridge lines as (fraction across, pixels below the top of the audio row)
+FAR_RIDGE = [(-.02, 40), (.06, 24), (.15, 9), (.25, 22), (.36, 5), (.47, 20), (.58, 30), (.7, 24), (.82, 32),
+             (SUN_X / SCENE_W, 30), (1.02, 38)]
+MID_RIDGE = [(-.02, 72), (.08, 60), (.2, 78), (.32, 62), (.44, 76), (.56, 58), (.68, 72), (.8, 64), (.92, 80),
+             (1.02, 70)]
+NEAR_RIDGE = [(-.02, 114), (.1, 102), (.24, 120), (.38, 106), (.52, 122), (.66, 104), (.8, 118), (.94, 108),
+              (1.02, 114)]
+
+
+def _smooth(ridge):
+    """A smooth ridge line through its points, as SVG path data."""
+    points = [(round(f * SCENE_W, 1), LOW + dy) for f, dy in ridge]
+    d = f"M{points[0][0]} {points[0][1]}"
+    for (x1, y1), (x2, y2) in zip(points[1:], points[2:]):
+        d += f"Q{x1} {y1} {(x1 + x2) / 2:g} {(y1 + y2) / 2:g}"
+    return d + f"L{points[-1][0]} {points[-1][1]}"
+
+
+def _stops(stops, darken=0.0):
+    return "".join(f'<stop offset="{o}" stop-color="{mix(c, "#000000", darken)}"/>' for o, c in stops)
+
+
+def _stars():
+    """Stars that thin out toward the sunrise, the same every build."""
+    out, seed, reach = [], 11, SCENE_W * 0.6
+
+    def rnd():
+        nonlocal seed
+        seed = (seed * 1103515245 + 12345) % 2 ** 31
+        return seed / 2 ** 31
+    for _ in range(80):
+        x, y = rnd() * reach, rnd() * (LOW - 20)
+        fade = max(0.0, 1 - x / reach) ** 1.3
+        if fade > 0.05:
+            out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{0.7 + rnd() * 1.1:.2f}" fill="#fff" '
+                       f'fill-opacity="{fade * (0.45 + rnd() * 0.55):.2f}"/>')
+    for x, y, r in ((118, 24, 5), (22, 120, 4), (LOW + 26, 30, 4.5), (LOW + 120, 112, 3.5)):  # a few that twinkle
+        out.append(f'<path d="M{x} {y - r}Q{x} {y} {x + r} {y}Q{x} {y} {x} {y + r}Q{x} {y} {x - r} {y}Q{x} {y} '
+                   f'{x} {y - r}z" fill="#fff" fill-opacity=".9"/>')
+    return "".join(out)
+
+
+def _rays():
+    """Soft beams fanning up and left from the sun, behind the ridge."""
+    out = []
+    for deg, width in ((-82, 2.2), (-68, 1.4), (-55, 2.8), (-41, 1.6), (-29, 2.4), (-17, 1.3), (-7, 2)):
+        pts = []
+        for a in (deg - width, deg + width):
+            rad = math.radians(a - 90)
+            pts.append(f"{SUN_X + 1200 * math.cos(rad):.0f} {SUN_Y + 1200 * math.sin(rad):.0f}")
+        out.append(f"M{SUN_X} {SUN_Y}L{pts[0]}L{pts[1]}Z")
+    return f'<path d="{"".join(out)}" fill="url(#rays)"/>'
+
+
+def scene_defs():
+    sun = f'gradientUnits="userSpaceOnUse" cx="{SUN_X}" cy="{SUN_Y}"'
+
+    def v(gid, y1, top, bottom):
+        return (f'<linearGradient id="{gid}" gradientUnits="userSpaceOnUse" x1="0" y1="{y1}" x2="0" y2="{SCENE_H}">'
+                f'<stop offset="0" stop-color="{top}"/><stop offset="1" stop-color="{bottom}"/></linearGradient>')
+    return (
+        f'<linearGradient id="sky" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="{SCENE_W}" y2="0">'
+        f'{_stops(SKY)}</linearGradient>'
+        f'<linearGradient id="night" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="{LOW}">'
+        '<stop offset="0" stop-color="#050720" stop-opacity=".5"/>'
+        '<stop offset="1" stop-color="#050720" stop-opacity="0"/></linearGradient>'
+        f'<radialGradient id="sunglow" {sun} r="{SCENE_W * 0.62:.0f}">'
+        '<stop offset="0" stop-color="#fff2c0"/><stop offset=".08" stop-color="#ffd27a" stop-opacity=".9"/>'
+        '<stop offset=".25" stop-color="#ff9a52" stop-opacity=".5"/><stop offset=".55" stop-color="#e2507a" '
+        'stop-opacity=".16"/><stop offset="1" stop-color="#e2507a" stop-opacity="0"/></radialGradient>'
+        f'<radialGradient id="rays" {sun} r="{SCENE_W}"><stop offset="0" stop-color="#fff4d6" stop-opacity=".3"/>'
+        '<stop offset=".7" stop-color="#fff4d6" stop-opacity=".06"/><stop offset="1" stop-color="#fff4d6" '
+        'stop-opacity="0"/></radialGradient>'
+        f'<radialGradient id="haze" {sun} r="{SCENE_W * 0.45:.0f}">'
+        '<stop offset="0" stop-color="#ffb070" stop-opacity=".6"/><stop offset=".5" stop-color="#e0607a" '
+        'stop-opacity=".18"/><stop offset="1" stop-color="#e0607a" stop-opacity="0"/></radialGradient>'
+        + v("far", LOW, "#6d3f92", "#32286c") + v("mid", LOW + 55, "#2c3c8e", "#1a2460")
+        + v("near", LOW + 100, "#132052", "#0a1030") +
+        f'<linearGradient id="rim" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="{SCENE_W}" y2="0">'
+        '<stop offset=".2" stop-color="#ffb06a" stop-opacity="0"/><stop offset=".9" stop-color="#ffe0a0" '
+        'stop-opacity="1"/></linearGradient>'
+        '<mask id="moon"><circle cx="24" cy="28" r="12" fill="#fff"/><circle cx="30" cy="23" r="10.5" fill="#000"/>'
+        '</mask>'
+        '<filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>'
+    )
+
+
+def scene_body():
+    def ridge(pts, fill):
+        return f'<path d="{_smooth(pts)}V{SCENE_H + 10}H-10Z" fill="{fill}"/>'
+    full = f'x="-10" y="-10" width="{SCENE_W + 20}" height="{SCENE_H + 20}"'
+    return (
+        f'<rect {full} fill="url(#sky)"/><rect {full} fill="url(#night)"/>' + _stars() +
+        '<circle cx="24" cy="28" r="20" fill="#f6eccb" fill-opacity=".16" filter="url(#soft)"/>'
+        '<circle cx="24" cy="28" r="12" fill="#f8efcf" mask="url(#moon)"/>'
+        f'<rect {full} fill="url(#sunglow)"/>' + _rays() +
+        f'<circle cx="{SUN_X}" cy="{SUN_Y}" r="{SUN_R + 12}" fill="#ffe2a0" fill-opacity=".5" filter="url(#soft)"/>'
+        f'<circle cx="{SUN_X}" cy="{SUN_Y}" r="{SUN_R}" fill="#fff6dc"/>'
+        + ridge(FAR_RIDGE, "url(#far)") +
+        f'<path d="{_smooth(FAR_RIDGE)}" fill="none" stroke="url(#rim)" stroke-width="3"/>'
+        f'<rect {full} fill="url(#haze)"/>'
+        + ridge(MID_RIDGE, "url(#mid)") +
+        f'<path d="{_smooth(MID_RIDGE)}" fill="none" stroke="url(#rim)" stroke-width="1.5" stroke-opacity=".5"/>'
+        + ridge(NEAR_RIDGE, "url(#near)")
+    )
+
+
+def scene_tile_svg(row, col, icon, cat, state):
+    """A Home key: its piece of the scene, a large icon, and when lit, a glow in its color and a bright ring."""
+    x0, y0 = col * (KEY_PX + KEY_GAP), row * (KEY_PX + KEY_GAP)
+    lit = state in ("active", "saved", "on")
+    color = accent({"on": "power", "saved": "save"}.get(state, cat))
+    if state == "saved":
+        icon = "check"
+    glyph = "#ffffff" if lit else ("#7d8590" if state == "locked" else mix(color, "#ffffff", 0.5))
+    shade = {"locked": 0.62, "rest": 0.14}.get(state, 0)
+    gray = ' filter="url(#gray)"' if state == "locked" else ""
+    parts = [
+        f'<svg {SVG} width="{KEY_PX}" height="{KEY_PX}" viewBox="0 0 {KEY_PX} {KEY_PX}"><defs>{scene_defs()}',
+        f'<linearGradient id="wash" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{color}" '
+        f'stop-opacity=".42"/><stop offset=".5" stop-color="{color}" stop-opacity=".7"/><stop offset="1" '
+        f'stop-color="{mix(color, "#000000", 0.45)}" stop-opacity=".92"/></linearGradient>',
+        '<linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1"><stop offset=".45" stop-color="#000" '
+        'stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".62"/></linearGradient>',
+        '<radialGradient id="glow" cx=".5" cy=".3" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".45"/>'
+        '<stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>',
+        '<filter id="gray"><feColorMatrix type="saturate" values=".12"/></filter>',
+        '<filter id="lift" x="-40%" y="-40%" width="180%" height="180%">'
+        + (f'<feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#fff" flood-opacity=".6"/>' if lit else "")
+        + '<feDropShadow dx="0" dy="2.5" stdDeviation="2.5" flood-color="#000" flood-opacity=".75"/></filter>',
+        '<filter id="ringglow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="4"/>'
+        '</filter></defs>',
+        f'<g transform="translate({-x0},{-y0})"{gray}>' + scene_body() + '</g>',
+    ]
+    if shade:
+        parts.append(f'<rect width="{KEY_PX}" height="{KEY_PX}" fill="#03040c" fill-opacity="{shade}"/>')
+    if lit:
+        parts += [f'<rect width="{KEY_PX}" height="{KEY_PX}" fill="url(#wash)"/>',
+                  '<ellipse cx="72" cy="42" rx="62" ry="44" fill="url(#glow)"/>']
+    parts.append(f'<rect width="{KEY_PX}" height="{KEY_PX}" fill="url(#scrim)"/>')
+    if lit:
+        ring = mix(color, "#ffffff", 0.45)
+        parts += [f'<rect x="4" y="4" width="136" height="136" rx="17" fill="none" stroke="{color}" '
+                  f'stroke-width="8" filter="url(#ringglow)"/>',
+                  f'<rect x="4" y="4" width="136" height="136" rx="17" fill="none" stroke="{ring}" stroke-width="4.5"/>']
+    else:
+        parts.append('<rect x="1" y="1" width="142" height="142" rx="18" fill="none" stroke="#fff" '
+                     'stroke-opacity=".14" stroke-width="2"/>')
+    parts.append(f'<g filter="url(#lift)"><g transform="translate(36,5) scale(3)" color="{glyph}" {stroke(1.9)}>'
+                 f'{GLYPHS[icon]}</g></g>')
+    if state == "locked":
+        parts.append(f'<g transform="translate(106,5) scale(1.35)" color="#8a939e" {stroke(2.2)}>'
+                     f'{GLYPHS["lock"]}</g>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def scene_strip_svg(col, cat, icon):
+    """A Home touch strip panel: its piece of the lake, reflecting the sky, with the panel's icon."""
+    color = accent(cat)
+    x0 = col * (STRIP_W // 4)
+    sun_x = SUN_X / SCENE_W * STRIP_W
+    return (f'<svg {SVG} width="200" height="100" viewBox="0 0 200 100"><defs>'
+            f'<linearGradient id="sky" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="{STRIP_W}" y2="0">'
+            f'{_stops(SKY, 0.62)}</linearGradient>'
+            '<linearGradient id="deep" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#03040c" '
+            'stop-opacity=".1"/><stop offset="1" stop-color="#03040c" stop-opacity=".7"/></linearGradient>'
+            f'<radialGradient id="r" gradientUnits="userSpaceOnUse" cx="{sun_x:.0f}" cy="0" r="220" '
+            'gradientTransform="matrix(1 0 0 .5 0 0)">'
+            '<stop offset="0" stop-color="#ffa860" stop-opacity=".45"/><stop offset=".5" stop-color="#d0507a" '
+            'stop-opacity=".12"/><stop offset="1" stop-color="#d0507a" stop-opacity="0"/></radialGradient>'
+            f'<linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="{color}" '
+            f'stop-opacity=".22"/><stop offset=".7" stop-color="{color}" stop-opacity="0"/></linearGradient></defs>'
+            f'<g transform="translate({-x0},0)"><rect width="{STRIP_W}" height="{STRIP_H}" fill="url(#sky)"/>'
+            f'<rect width="{STRIP_W}" height="{STRIP_H}" fill="url(#r)"/>'
+            f'<rect width="{STRIP_W}" height="{STRIP_H}" fill="url(#deep)"/></g>'
+            '<rect width="200" height="100" fill="url(#g)"/>'
+            '<path d="M199.5 8v84" stroke="#fff" stroke-opacity=".1"/>'
+            f'<g transform="translate(9,10) scale(1.3)" color="{color}" {_S}>{GLYPHS[icon]}</g></svg>')
+
+
+def tile_name(k, state):
+    if k.page in SCENE_PAGES:
+        return f"{PAGES[k.page][0].lower()}-{k.icon}-{state}"
+    return f"tile-{k.cat}-{k.icon}-{state}"
+
+
+def strip_name(k):
+    return f"{PAGES[k.page][0].lower()}-strip-{k.cat}" if k.page in SCENE_PAGES else f"strip-{k.cat}"
+
+
 def art_key(k):
     """The artwork names a key needs, with their SVG source and size."""
     out = {}
     if k.kind == "key":
         states = ["rest"] + [s for _, s in k.fb]
         for s in states:
-            out[f"tile-{k.cat}-{k.icon}-{s}"] = (tile_svg(k.icon, k.cat, s), 144, 144)
+            svg = (scene_tile_svg(k.row, k.col, k.icon, k.cat, s) if k.page in SCENE_PAGES
+                   else tile_svg(k.icon, k.cat, s))
+            out[tile_name(k, s)] = (svg, KEY_PX, KEY_PX)
     elif k.kind == "strip":
         icon = STRIP_ICONS.get(k.cat) or k.cat.split("-", 1)[1]
         cat = k.cat if k.cat in PALETTE else "audio"
-        out[f"strip-{k.cat}"] = (strip_svg(cat, icon), 200, 100)
+        svg = scene_strip_svg(k.col, cat, icon) if k.page in SCENE_PAGES else strip_svg(cat, icon)
+        out[strip_name(k)] = (svg, 200, 100)
     return out
 
 
@@ -1108,7 +1317,7 @@ def layers_for(k, images):
         title_color = accent(k.cat if k.cat in PALETTE else "audio")
         if s.get("dim"):  # a panel that greys out while its dial does nothing
             title_color = expr(f"{s['dim']} ? '{DIM}' : '{title_color}'")
-        panel = el_image("art", "Panel", 0, 0, 100, 100, img(images, f"strip-{k.cat}"))
+        panel = el_image("art", "Panel", 0, 0, 100, 100, img(images, strip_name(k)))
         if s.get("dim"):
             panel["opacity"] = expr(f"{s['dim']} ? 35 : 100")
         layers = [
@@ -1129,7 +1338,7 @@ def layers_for(k, images):
                                   enabled=expr(s["badge"])))
         return layers, []
     # A normal key: tile artwork with a live label
-    rest = img(images, f"tile-{k.cat}-{k.icon}-rest")
+    rest = img(images, tile_name(k, "rest"))
     layers = [
         el_canvas("border"),
         el_box("bg", "Background", 0, 0, 100, 100, PALETTE[k.cat][1]),
@@ -1139,7 +1348,7 @@ def layers_for(k, images):
     ]
     feedbacks = []
     for expression, state in k.fb:
-        overrides = [("art", "base64Image", img(images, f"tile-{k.cat}-{k.icon}-{state}")),
+        overrides = [("art", "base64Image", img(images, tile_name(k, state))),
                      ("label", "color", TEXT_DIM if state == "locked" else TEXT_ACTIVE)]
         if state in k.labels:
             overrides.append(("label", "text", k.labels[state]))
@@ -2326,13 +2535,19 @@ def write_doc(count, checks):
       "lighting keys go grey and show a lock. A green key with a check mark has just saved a look. While the audio "
       "system is off, the audio power key is red and says Turn Audio On, and the audio panels on the touch strip go "
       "grey. While it is on, that key is green and says Turn Audio Off.\n")
+    a("Home's eight keys share one picture, the sun cresting a ridge at dawn, cut into a piece per key. The sky over "
+      "the lights row brightens from Lights Off, under the moon, to Lights 3, by the sun. The audio keys stand on the "
+      "ridges, and the touch strip below is a lake reflecting the sky. A Home key that is on glows in its own color "
+      "over its piece of the picture, with a bright ring around it. The picture allows for the bezel between keys "
+      f"({KEY_GAP} pixels, against a {KEY_PX}-pixel key), so it lines up across them. If it looks off on a real deck, "
+      "measure a key and the gap between two keys and set `KEY_GAP` in build.py to 144 times the gap divided by the key.\n")
     a("The touch strip shows a live panel above each dial: what the dial does, its value, and a level bar that moves "
       "as you turn it.\n")
     a("Labels are live text, so you can rename a key in Companion without touching its artwork. The artwork is in "
       "[config/stream-deck/icons](../config/stream-deck/icons): 144-pixel keys, drawn larger than the Stream Deck +'s "
       "120-pixel keys so they stay sharp, and 200 by 100 touch strip panels, the size of each strip segment.\n")
     a(f"Inside Companion the same {len(LIBRARY)} images live in the image library, stored once, and keys refer to "
-      "them by name, such as `$(image:tile_light_level2_active)`. Replacing an image there changes every key that "
+      "them by name, such as `$(image:home_level2_active)`. Replacing an image there changes every key that "
       "uses it.\n")
     a("## Pages\n")
     a("Every station is a Stream Deck + with 8 keys, a touch strip and 4 dials, and they all share these pages. "
@@ -2520,19 +2735,20 @@ def sample_state(ipad=False):
 
 def layout(cards, path, width, title, note):
     rows, cols, size = 2, 4, 104
+    gap = round(size * KEY_GAP / KEY_PX)  # the deck's real spacing, so the Home picture lines up across keys
     html_cards = []
     for n, caption, sim in cards:
         grid = "".join(
             preview(CONTROLS[f"{n}/{r}/{c}"], sim, size, size) if f"{n}/{r}/{c}" in CONTROLS
             else f'<div class="btn empty" style="width:{size}px;height:{size}px"></div>'
             for r in range(rows) for c in range(cols))
-        cell_w = (cols * size + (cols - 1) * 10) / 4
+        cell_w = (cols * size + (cols - 1) * gap) / 4
         strip = "".join(preview(CONTROLS[f"{n}/2/{c}"], sim, int(cell_w), int(cell_w / 2)) for c in range(4))
         dials = "".join(f'<div class="dialcell"><div class="dial"></div><div class="dlabel">'
                         f'{html.escape(KEYS[f"{n}/3/{c}"].label)}</div></div>' for c in range(4))
         extra = f'<div class="strip">{strip}</div><div class="dials">{dials}</div>'
         html_cards.append(f'<div class="card"><h2>{html.escape(caption)}</h2><div class="deck">'
-                          f'<div class="grid" style="grid-template-columns:repeat({cols},{size}px)">{grid}</div>'
+                          f'<div class="grid" style="grid-template-columns:repeat({cols},{size}px);gap:{gap}px">{grid}</div>'
                           f'{extra}</div></div>')
     page = f"""<!doctype html><meta charset="utf-8"><style>
 body{{margin:0;padding:28px;width:{width}px;background:#f3f1ec;font-family:'Segoe UI',Arial,sans-serif;color:#1c2024}}
@@ -2586,7 +2802,7 @@ def main():
         for cards, name, width, height, title, note in (
                 ([(1, "Page 1: Home", live), (2, "Page 2: More", live), (3, "Page 3: Playlists", live),
                   (4, "Page 4: Zone Mains", live), (1, "Home in iPad Mode", ipad), (1, "Home with the audio off", off)],
-                 "stream-deck-pages", 1540, 1060, "Stream Deck + pages, shared by every station",
+                 "stream-deck-pages", 1720, 1110, "Stream Deck + pages, shared by every station",
                  "The touch strip shows each dial's value live. Shown with Lights 2 at 80%, music playing inside, "
                  "and the mics at -8 dB. The last two cards show the lights locked in iPad Mode, and the audio "
                  "system off, with the power key red and saying Turn Audio On, and the Volume and Mics dials greyed out."),):

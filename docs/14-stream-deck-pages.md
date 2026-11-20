@@ -25,11 +25,13 @@ On the Stream Deck +, rows 0 and 1 are the keys, row 2 is the touch strip, and r
 
 Amber is lighting, warm white is the linear lights, blue is audio, violet is music, teal is the mics, purple is the iPad and red is off. A lit key, bright with a white icon, is the active choice. In iPad Mode, lighting keys go grey and show a lock. A green key with a check mark has just saved a look. While the audio system is off, the audio power key is red and says Turn Audio On, and the audio panels on the touch strip go grey. While it is on, that key is green and says Turn Audio Off.
 
+Home's eight keys share one picture, the sun cresting a ridge at dawn, cut into a piece per key. The sky over the lights row brightens from Lights Off, under the moon, to Lights 3, by the sun. The audio keys stand on the ridges, and the touch strip below is a lake reflecting the sky. A Home key that is on glows in its own color over its piece of the picture, with a bright ring around it. The picture allows for the bezel between keys (48 pixels, against a 144-pixel key), so it lines up across them. If it looks off on a real deck, measure a key and the gap between two keys and set `KEY_GAP` in build.py to 144 times the gap divided by the key.
+
 The touch strip shows a live panel above each dial: what the dial does, its value, and a level bar that moves as you turn it.
 
 Labels are live text, so you can rename a key in Companion without touching its artwork. The artwork is in [config/stream-deck/icons](../config/stream-deck/icons): 144-pixel keys, drawn larger than the Stream Deck +'s 120-pixel keys so they stay sharp, and 200 by 100 touch strip panels, the size of each strip segment.
 
-Inside Companion the same 63 images live in the image library, stored once, and keys refer to them by name, such as `$(image:tile_light_level2_active)`. Replacing an image there changes every key that uses it.
+Inside Companion the same 69 images live in the image library, stored once, and keys refer to them by name, such as `$(image:home_level2_active)`. Replacing an image there changes every key that uses it.
 
 ## Pages
 
