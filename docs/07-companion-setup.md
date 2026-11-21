@@ -29,11 +29,11 @@ Companion holds the button layouts, the logic and the lights. Every page, artwor
 | `wiim` | [generic-http](https://github.com/bitfocus/companion-module-generic-http) | Base URL `https://192.168.50.40/`, unauthorized certificates accepted |
 | `power` | [generic-http](https://github.com/bitfocus/companion-module-generic-http) | Base URL `http://192.168.50.45/`, the Shelly relay that switches the amplifiers' Furman |
 
-The WiiM uses a self-signed certificate, which is why the file accepts it. The file holds pages, variables, triggers, connections, 63 artwork images, the Elgato Stream Deck surface integration, and four surface groups. It doesn't hold the decks themselves or passwords, so add those next.
+The WiiM uses a self-signed certificate, which is why the file accepts it. The file holds pages, variables, triggers, connections, 113 artwork images, the Elgato Stream Deck surface integration, and four surface groups. It doesn't hold the decks themselves or passwords, so add those next.
 
 Companion 5 drives USB Stream Decks through a surface integration. A full reset replaces the integrations with the ones in the file, which is why the file carries the Elgato one. An import that resets surfaces from a file without it leaves every Stream Deck showing Offline.
 
-The artwork lives in Companion's image library, and each key refers to it by name, such as `$(image:tile_light_level2_active)`. To change a picture everywhere it appears, replace that one image in the library.
+The artwork lives in Companion's image library, and each key refers to it by name, such as `$(image:dawn_r0c2_level2_active)`. To change a picture everywhere it appears, replace that one image in the library.
 
 ## Add the surfaces
 
@@ -41,8 +41,8 @@ Every station is a Stream Deck +, and they all share the same pages. The file in
 
 | Group | Starts on | Can use |
 | --- | --- | --- |
-| Rack | Page 1, Home | Pages 1 to 8, every page |
-| Door 1, Door 2, Door 3 | Page 1, Home | Pages 1 to 8, until you lock a door out of some |
+| Rack | Page 1, Home | Pages 1 to 6, every page |
+| Door 1, Door 2, Door 3 | Page 1, Home | Pages 1 to 6, until you lock a door out of some |
 
 1. Plug the rack Stream Deck + into the Companion host by USB. The install script handles Linux USB permissions.
 2. Power each door dock over PoE, then give it its static address on the dock itself.
@@ -59,9 +59,11 @@ Every station starts with every page. To keep a door to the basics, open **Surfa
 | Page | Holds | Locking it out stops |
 | --- | --- | --- |
 | 1, Home | Lights Off, Lights 1 to 3, the audio power key, Auditorium, Music, and the four dials | Keep it. Every station needs it |
-| 2, More | Bluetooth, Lobby Event, Music Everywhere, Playlists, Zones, Close Up and iPad Mode | Leaving iPad Mode, Close Up, and the pages below, which are only reached from More |
-| 3, Playlists | The four playlists | Changing the playlist |
-| 4 to 8 | One zone each | Changing a single zone's source or level |
+| 2, More | Light Control, Audio Source, Audio Zones, Playlists and iPad Mode | Leaving iPad Mode, and the pages below, which are only reached from More |
+| 3, Playlists | Seven playlists | Changing the playlist |
+| 4, Light Control | Each light area on its own | Setting single areas |
+| 5, Audio Source | Auditorium, Music, Bluetooth, Lobby Stage and the Bluetooth level | Playing Bluetooth or the Lobby Stage, and setting the Bluetooth level |
+| 6, Audio Zones | Each zone on or off, and its volume | Changing a single zone |
 
 A key that opens a page the group can't use sends that deck to its first allowed page instead, which is Home. So on a door locked out of More, **More** simply stays on Home. Companion 5.1.3's surface groups work this way.
 
@@ -89,10 +91,12 @@ To try a door's group, set the +'s **Surface Group** to **Door 1**. It works exa
 | 1 | Home | Every station |
 | 2 | More | Every station, unless locked out |
 | 3 | Playlists | Every station, unless locked out |
-| 4 to 8 | One page per zone | Every station, unless locked out |
-| 20 to 22 | Library, the shared building blocks | No surface |
+| 4 | Light Control | Every station, unless locked out |
+| 5 | Audio Source | Every station, unless locked out |
+| 6 | Audio Zones | Every station, unless locked out |
+| 20 to 24 | Library, the shared building blocks | No surface |
 
-The Library is why this stays maintainable. Each real key runs a Library block with **Button: Trigger press and release**, so a change happens in one place. Pages 9 to 19 are empty.
+The Library is why this stays maintainable. Each real key runs a Library block with **Button: Trigger press and release**, so a change happens in one place. Pages 7 to 19 are empty.
 
 ## The main page
 
@@ -101,29 +105,46 @@ The Library is why this stays maintainable. Each real key runs a Library block w
 | **Bottom row** | **Turn Audio Off**, or **Turn Audio On** | **Auditorium** | **Music** | **More** |
 | **Dials** | **All Lights** | **Linear** | **Volume** | **Mics** |
 
-The touch strip shows each dial's value and a level bar above it. The first two dials and the last one do the same thing on every page. The third dial is the volume of whatever the page is about: whatever is playing on Home, More and Playlists, or one zone on a zone page.
+The touch strip shows each dial's value and a level bar above it. The first two dials and the last one do the same thing on every page. The third dial follows the page: Volume on Home, More and Playlists, the picked area on Light Control, Bluetooth on Audio Source, and the picked zone on Audio Zones.
 
 | Dial | Turn | Push |
 | --- | --- | --- |
 | All Lights | Every light, 5% a click | Lights off, or back on |
 | Linear | Just the linear lights, 5% a click | Back to the look's level |
-| Volume | Whatever is playing, 1 dB a click, up to 6 dB over normal. The panel names it and reads Normal, or how far from it | What's playing back to normal |
-| A zone, on its page | That zone, 1 dB a click | That zone back to its normal level |
+| Volume | Whatever is playing, 1 dB a click, up to 26 dB over normal. The panel names it and reads Normal, or how far from it | What's playing back to normal |
+| Area, on Light Control | The picked area, 5% a click. With the lights off, turning up brings that area on by itself | That area back to the look's level |
+| Bluetooth, on Audio Source | Bluetooth's level, 1 dB a click, playing or not, up to 26 dB over normal | Bluetooth back to normal |
+| Zone, on Audio Zones | The picked zone, 1 dB a click | That zone back to its normal level |
 | Mics | The mic bus, 1 dB a click, up to 0 dB | Mute or unmute the mics |
 
 Every dial speeds up when it's turned quickly. A slow click moves one step, as above. Clicks less than 120 ms apart move 2 steps each, and less than 50 ms apart move 4. Turning the other way, or another dial, starts slow again, and levels still stop at their limits. Each turn works this out from Companion's `$(this:delta)`, the clicks the deck reported, and the time since the last click.
 
-While the audio system is off, the Volume, Mics and zone dials do nothing, and their panels say Off and go grey.
+While the audio system is off, the Volume, Mics, Bluetooth and Zone dials do nothing, and their panels say Off and go grey.
 
 To change the feel, set `turn_medium_ms` and `turn_fast_ms` on the Variables page. Raise them to speed up sooner, or set both to 0 for one step a click. [Stream Deck pages](14-stream-deck-pages.md#dial-speed) has the details.
 
 Tapping a Lights key plays it. Holding one for 3 seconds saves the lights as they are now into it, and the key turns green and says Saved.
 
-The Volume dial controls whatever is playing, as the source of the first zone that's on: the auditorium feed on Bus 14, music on Bus 15, Bluetooth on Bus 16, or the lobby mix on Main 1. The panel's title names it. Normal is 0 dB on that fader. Room buttons put Bus 14 to 16 back to normal, but leave Main 1 to whoever is mixing the band.
+The Volume dial controls whatever is playing, as the source of the first zone that's on: the auditorium feed on Bus 14, music on Bus 15, Bluetooth on Bus 16, or the lobby stage on Main 1. The panel's title names it. Normal is -20 dB on that fader, so the dial has 26 dB to go up before it stops at +6 dB, and 40 dB to go down to -60 dB. Room buttons put Bus 14 and 15 back to normal. They leave Bus 16 at the level the Bluetooth dial set, and Main 1 to whoever is mixing the band.
 
 Companion keeps its own copy of every zone level, each source fader, the mic level and the mic mute, and moves the Wing in step. When the Wing reports a level, the panels show the Wing's. When it doesn't, as on a desk with no Wing, the dials still move and the panels show Companion's copy, with an orange **NO WING** badge on the Volume and Mics panels.
 
 The keys don't show Companion's status marks, such as the red ! for a device it can't reach or the green arrow while a key's actions run. The NO WING badge and the Connections page cover that instead.
+
+## More, and the pages below it
+
+More is the jumping-off point. Its dials match Home's, and **Home** is in the bottom-right corner of every page.
+
+| Top row | Light Control | Audio Source | Audio Zones | Playlists |
+| --- | --- | --- | --- | --- |
+| **Bottom row** | **iPad Mode** | Blank | Blank | **Home** |
+
+- **Light Control** has a key for each light area: Cafe, Chandeliers, Entry Hall, Sconces, Soffit, Fireplace and Outside. Tap one to pick it, and the third dial, Area, sets it. Each key is lit while its area is on, with its level along the bottom, and the picked one has a white ring. The looks hold every area's level, so Lights 1 to 3 reset them all and holding a Lights key saves them all. With the lights off, turning an area up brings it on by itself.
+- **Playlists** has Morning, Everyday, Evening, Seasonal, Calm, Pop and Upbeat, and Home. A playlist key is lit while it plays. In a silent room it starts music inside, like Music on Home. For music outside too, switch the entries on in Audio Zones.
+- **Audio Source** shows Auditorium, Music, Bluetooth and Lobby Stage, each lit while it plays. They toggle like the keys on Home. The third dial sets the Bluetooth level, playing or not, and keeps it.
+- **Audio Zones** has a key for each zone: Lobby, Main Entry, North Entry, Bathrooms and Vestibule. Tap one to pick it. The switch beside Vestibule names the picked zone and turns it on or off: green and saying Turn Off while it plays, red and saying Turn On while it's off. A zone switched on plays what the other zones are playing, or the source played last if nothing is, and turns the audio system on if it's off. The third dial, Zone, sets the picked zone's volume.
+
+Blank keys show their piece of the page's picture and do nothing.
 
 ## Audio power
 
@@ -132,10 +153,10 @@ The bottom row of Home turns the audio system on and off, as well as choosing wh
 | Key | While the audio is off | While it's on |
 | --- | --- | --- |
 | Audio power key | Red, saying Turn Audio On. Press to turn the system on, with nothing playing | Green, saying Turn Audio Off. Press to turn every zone off, stop the music, then turn the amplifiers off |
-| Auditorium, Music, Bluetooth, Lobby Event | Press to turn the system on and play that source | Lit while its source plays anywhere. Press a lit key to turn its source off, leaving the system on. Press another to swap to it |
-| Everywhere, Inside, a playlist, a zone's source | Press to turn the system on and play | Plays, as before |
-| Volume, Mics and zone dials | Do nothing. Their panels say Off and go grey | Work as usual |
-| Close Up, and the night schedule | Stay off | Turn the lights and the audio system off |
+| Auditorium, Music, Bluetooth, Lobby Stage | Press to turn the system on and play that source | Lit while its source plays anywhere. Press a lit key to turn its source off, leaving the system on. Press another to swap to it |
+| A playlist, the zone switch | Press to turn the system on and play | Plays, as before |
+| Volume, Mics, Bluetooth and Zone dials | Do nothing. Their panels say Off and go grey | Work as usual |
+| The night schedule | Stays off | Turns the lights and the audio system off |
 
 `audio_power` holds the state, 1 for on and 0 for off. Only two Library blocks talk to the relay, `21/3/0` Power On and `21/3/1` Power Off, so a different power switch means editing those two and the startup trigger.
 
@@ -143,14 +164,14 @@ Sound starts once the Furman has brought the amplifiers up, so keep its delay sh
 
 ## The whole-room buttons
 
-Each one runs one Library block per zone and resets every matrix fader to its normal level. Because they set every zone, pressing any of them resets the room. Auditorium, Music, Bluetooth and Lobby Event also toggle, as [Audio power](#audio-power) describes. These zone choices are starting points, and you change one by editing its block on row 2 of page 21. The mics reach every zone that's on, whatever its source.
+Each one runs one Library block per zone and resets every matrix fader to its normal level. Because they set every zone, pressing any of them resets the room. Auditorium, Music, Bluetooth and Lobby Stage also toggle, as [Audio power](#audio-power) describes. These zone choices are starting points, and you change one by editing its block on row 2 of page 21. The mics reach every zone that's on, whatever its source.
 
-| Button | Mains | Outdoor | Soffit | Bathrooms | Vestibule |
+| Button | Lobby | Main Entry | North Entry | Bathrooms | Vestibule |
 | --- | --- | --- | --- | --- | --- |
 | Auditorium | Auditorium | Off | Off | Auditorium | Auditorium |
 | Music, Inside | Playlist | Off | Off | Playlist | Playlist |
-| Music, Everywhere | Playlist | Playlist | Playlist | Playlist | Playlist |
-| Lobby Event | Lobby Mix | Off | Off | Lobby Mix | Lobby Mix |
+| Music Everywhere, a Library block with no key, for schedules | Playlist | Playlist | Playlist | Playlist | Playlist |
+| Lobby Stage | Lobby Stage | Off | Off | Lobby Stage | Lobby Stage |
 | Bluetooth | Bluetooth | Off | Off | Bluetooth | Bluetooth |
 | Turn Audio Off, before the amplifiers go off | Off | Off | Off | Off | Off |
 
@@ -170,7 +191,7 @@ Any station that can open More can leave iPad Mode. Lock the doors out of More t
 
 ## Close Up
 
-Hold **Close Up** on the More page for 1.5 seconds to turn off the lights and the audio system. It also leaves iPad Mode, so the doors can't stay locked.
+**Close Up** is a Library block, `22/2/6`, that turns off the lights and the audio system and leaves iPad Mode, so the doors can't stay locked. The night schedule runs it, and no key does. To shut down by hand, press **Lights Off** and **Turn Audio Off** on Home.
 
 ## The startup trigger
 

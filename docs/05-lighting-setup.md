@@ -1,6 +1,6 @@
 # Lighting setup
 
-Companion runs the lights. It keeps each look as two levels, one for the linear house lights and one for every other fixture, and sends them as Art-Net to the ODE Mk3, which turns them into DMX on your one universe. There is no separate preset player.
+Companion runs the lights. It keeps each look as a level for the linear house lights and one for each light area, and sends them as Art-Net to the ODE Mk3, which turns them into DMX on your one universe. There is no separate preset player.
 
 Companion's own [Art-Net module](https://github.com/bitfocus/companion-module-generic-artnet) does the sending, so this is configuration, not code. [Stream Deck pages](14-stream-deck-pages.md#lighting-math) shows the exact math.
 
@@ -37,10 +37,18 @@ The imported file has placeholder channels until the patch sheet exists. Each gr
 | Channels | Follows | What they are |
 | --- | --- | --- |
 | 1 to 8 | The Linear dial and each look's linear level | Linear house lights, through 0-10V decoders |
-| 9 to 32 | Each look's fixture level | Every other fixture's intensity channel |
+| 9 to 12 | Cafe | Placeholder |
+| 13 to 16 | Chandeliers | Placeholder |
+| 17 to 20 | Entry Hall | Placeholder |
+| 21 to 24 | Sconces | Placeholder |
+| 25 to 28 | Soffit | Placeholder |
+| 29 to 30 | Fireplace | Placeholder |
+| 31 to 32 | Outside | Placeholder |
+
+Each area has its own level, which the Area dial on Light Control sets and each look saves. All Lights scales every area and the linear lights together. When the fixtures are chosen, list on the patch sheet which ones belong to each area.
 
 1. In Companion, open page 22, key `22/1/0` **Compute DMX**.
-2. Edit the channel ranges in its expression to match the patch sheet. A range like `9-32` sets every channel in it.
+2. Edit the channel ranges in its expression to match the patch sheet. A range like `9-12` sets every channel in it.
 3. If a fixture needs a channel held at a fixed value, such as a color mix or mode, add it to the end of the expression the same way, with a number instead of a level.
 4. Press a Lights key and check each fixture.
 
@@ -51,7 +59,7 @@ Before the first import, it's easier to change `LIGHT_GROUPS` and `STATIC_CHANNE
 The file starts with Lights 1 at 35%, Lights 2 at 65% and Lights 3 at full. Set them in the real room:
 
 1. Stand at the rack and press **Lights 2**.
-2. Turn **All Lights** and **Linear** until the room looks right.
+2. Turn **All Lights** and **Linear**, and set single areas on **More**, then **Light Control**, until the room looks right.
 3. Hold **Lights 2** for 3 seconds, until it turns green and says **Saved**.
 4. Repeat for Lights 1 and 3.
 

@@ -8,7 +8,7 @@ Companion holds the looks, the Wing Rack holds the zones, and the iPad takes ove
 
 ## Design rules
 
-- **Buttons set a known state.** Whole-room buttons set every zone, which makes reset reliable after someone uses the Wing app. Auditorium, Music, Bluetooth and Lobby Event also toggle, so pressing a lit one turns its source off. The audio power key turns the whole system off and back on, and is green while it's on and red while it's off.
+- **Buttons set a known state.** Whole-room buttons set every zone, which makes reset reliable after someone uses the Wing app. Auditorium, Music, Bluetooth and Lobby Stage also toggle, so pressing a lit one turns its source off. The audio power key turns the whole system off and back on, and is green while it's on and red while it's off.
 - **Lay people never open Companion.** They save a light look by holding its key, and change playlists outside Companion.
 - **Each job has one home.** A look lives in two Companion variables, the patch lives in one block, and each room scene lives in one block. Every key points at those blocks.
 

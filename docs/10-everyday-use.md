@@ -2,7 +2,7 @@
 
 Most people only need a door station. This section can be printed as a card for the rack and for volunteers.
 
-A bright key with a white icon is what's on now. Grey keys with a lock mean someone is running the lights from the iPad.
+A key that glows with a bright ring is what's on now. A white ring marks the light or place you've picked for a dial. Grey keys with a lock mean someone is running the lights from the iPad.
 
 ## At a door
 
@@ -16,12 +16,12 @@ The top row is the lights, the bottom row is the sound, and the dials fine-tune 
 
 | Press | What happens |
 | --- | --- |
-| Lights Off | The lights fade out |
-| Lights 1, 2 or 3 | The lights fade to that look |
+| Lights Off | The lights fade out, and the key turns red |
+| Lights 1, 2 or 3 | The lights fade to that look, and its key turns green |
 | Turn Audio Off | Everything goes quiet and the amplifiers turn off. The key turns red and says **Turn Audio On**. Press it to turn the sound system back on |
 | Auditorium | Inside speakers play the service. Press again to stop it |
 | Music | Inside speakers play the playlist. Press again to stop it |
-| More | Bluetooth, Lobby Event, music everywhere, playlists, single areas, Close Up and iPad Mode |
+| More | Light Control, Audio Source, Audio Zones, Playlists and iPad Mode |
 
 | Dial | Turn | Push |
 | --- | --- | --- |
@@ -30,7 +30,7 @@ The top row is the lights, the bottom row is the sound, and the dials fine-tune 
 | Volume | Whatever is playing, such as the music or the auditorium. The panel names it and says Normal, or how far from it | Back to normal |
 | Mics | The wireless mics | Mute or unmute |
 
-The audio key is green while the sound system is on and red while it's off. Auditorium and Music turn the sound system on by themselves, so you never need to turn it on first, and the audio key turns green. Pressing one while the other plays swaps them. The sound starts a few seconds later, once the amplifiers are up.
+Green means on and red means off: a green Lights key and a green audio key mean the lights and the sound are both on. The audio key is green while the sound system is on and red while it's off. Auditorium and Music turn the sound system on by themselves, so you never need to turn it on first, and the audio key turns green. Pressing one while the other plays swaps them. The sound starts a few seconds later, once the amplifiers are up.
 
 While the audio key is red, the Volume and Mics dials do nothing, and their panels say Off.
 
@@ -38,16 +38,19 @@ Turn a dial slowly for small changes. Turn it quickly to move further.
 
 The wireless mics play through every speaker that's on, whatever else is playing.
 
-For one area only, press **More**, then **Zones**, pick the area and choose its source. The third dial then sets that area's volume.
+To set one area of lights, such as the fireplace, press **More**, then **Light Control**. Tap the area, then turn the third dial. With the lights off, turning it up brings just that area on.
 
-When you leave for the night, press **More**, then hold **Close Up** until everything turns off.
+To turn the sound on or off in one place, press **More**, then **Audio Zones**. Tap the place, then press the switch beside **Vestibule**. It names the place and says **Turn Off** or **Turn On**. The third dial sets that place's volume.
+
+When you leave for the night, press **Lights Off** and **Turn Audio Off**.
 
 ## Playing music from a phone
 
 1. Pair your phone with the receiver in the rack.
 2. Start the music on your phone.
-3. Press **More**, then **Bluetooth**.
-4. When you finish, press **Bluetooth** again to stop it, or press **Music** or **Auditorium** on the main page.
+3. Press **More**, then **Audio Source**, then **Bluetooth**.
+4. If it's too loud or too quiet, turn the third dial, Bluetooth. It keeps that level for next time.
+5. When you finish, press **Bluetooth** again to stop it, or press **Music** or **Auditorium** on the main page.
 
 ## Changing the music
 
@@ -61,7 +64,7 @@ Keep button names general, such as Morning or Christmas. Then new playlists neve
 Anyone trusted can do this at any station in under a minute.
 
 1. Press the look you want to change, such as **Lights 2**.
-2. Turn **All Lights** and **Linear** until the room looks right.
+2. Turn **All Lights** and **Linear**, and set single areas on **More**, then **Light Control**, until the room looks right.
 3. Hold that same key for 3 seconds, until it turns green and says **Saved**.
 
 Every door and the schedule use the new look straight away. If you change your mind, set the lights again and save again.
@@ -74,7 +77,8 @@ Every door and the schedule use the new look straight away. If you change your m
 | The panels say iPad and no event is running | Press **More** on the rack station, then hold **iPad Mode** for one second |
 | Lights keys are grey with a lock | Same as above |
 | Door buttons don't change the lights | Use the rack station, then call your technical contact |
-| One area has no sound | Press **More**, then **Zones**, pick the area, and check it isn't Off |
+| One place has no sound | Press **More**, then **Audio Zones**, and tap the place. If the switch says **Turn On**, press it |
+| One area of lights is off or wrong | Press **More**, then **Light Control**, tap the area and turn the third dial. Lights 1, 2 or 3 also resets every area |
 | No sound, and the audio key is red | The sound system is off. Press **Auditorium** or **Music**, or **Turn Audio On** to turn it on with nothing playing |
 | Nobody can hear the mics | Check the Mics panel on the rack. If it says **Off**, the sound system is off, so turn it on as above. If it says **Muted**, push the Mics dial |
 | The Volume or Mics panel says **NO WING** | The rack can't reach the sound desk. Call your technical contact |

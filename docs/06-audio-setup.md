@@ -11,14 +11,14 @@ The [Wing Rack](https://thomannmusic.com/behringer_wing_rack.htm) has 8 matrices
 | Auditorium feed | Two line inputs | Aux 1 | Bus 14 |
 | Playlist | Two line inputs | Aux 2 | Bus 15 |
 | Bluetooth | Two line inputs | Aux 3 | Bus 16 |
-| Lobby mix | Band | Normal channels | Main 1 |
+| Lobby stage | Band | Normal channels | Main 1 |
 | Wireless mics | Mic receivers | Normal channels | Bus 13, always on |
 
 | Zone | Matrix | Format | Wing output | Amp channel |
 | --- | --- | --- | --- | --- |
-| Mains | MX1 | Stereo | Local 1 and 2 | Own pair |
-| Outdoor | MX2 | Stereo | Local 3 and 4 | Own pair |
-| Soffit, 70V | MX3 | Mono | Local 5 | Own channel |
+| Lobby, the main pair | MX1 | Stereo | Local 1 and 2 | Own pair |
+| Main Entry, the courtyard pair | MX2 | Stereo | Local 3 and 4 | Own pair |
+| North Entry, 70V under the soffit | MX3 | Mono | Local 5 | Own channel |
 | Bathrooms | MX4 | Mono | Local 6 | Own channel |
 | Vestibule | MX5 | Mono | Local 7 | Own channel |
 
@@ -37,7 +37,7 @@ Adjust the input numbers and buses to fit the band plan. Screen names below come
 1. Connect the WiiM to the AV switch and set it up in the WiiM Home app.
 2. Sign in to the streaming account.
 3. Run its RCA outputs to two Wing Rack inputs. Use a stereo DI if the unbalanced connection hums.
-4. Save each playlist to a WiiM preset. Name them for how people use them, such as Morning or Christmas.
+4. Save each playlist to a WiiM preset. Presets 1 to 7 match the playlist keys: Morning, Everyday, Evening, Seasonal, Calm, Pop and Upbeat. Name them for how people use them, such as Morning or Christmas.
 5. Test a preset from a browser: `https://192.168.50.40/httpapi.asp?command=MCUKeyShortClick:1`
 
 The [WiiM HTTP API](https://www.wiimhome.com/pdf/HTTP%20API%20for%20WiiM%20Products.pdf) documents this command. The device uses a self-signed certificate, so expect a browser warning.
@@ -59,13 +59,13 @@ No zone listens to Bluetooth by default, so a stray pairing plays nowhere.
 3. On the ROUTING screen, assign the three input pairs to Aux 1, 2 and 3 as stereo. Name them AUD FEED, PLAYLIST and BLUETOOTH.
 4. Take Aux 1 to 3 out of Main 1. The operator's mix should not contain them.
 5. Send Aux 1 to Bus 14, Aux 2 to Bus 15 and Aux 3 to Bus 16, each at 0 dB.
-6. Name those buses SRC AUD, SRC MUSIC and SRC BT. Set their faders to 0 dB and take them out of Main 1. 0 dB is normal: the Volume dial moves the fader of whichever is playing, and room buttons put them back to 0 dB.
-7. Send every wireless mic channel to Bus 13, post-fader, and take them out of Main 1. Name Bus 13 MICS and set its fader to -10 dB. In a Lobby Event the band reaches the zones through Main 1 and the mics through Bus 13, so they never arrive twice.
+6. Name those buses SRC AUD, SRC MUSIC and SRC BT. Set their faders to -20 dB and take them out of Main 1. -20 dB is normal, which leaves the Volume dial 26 dB to go up before it stops at +6 dB. The Volume dial moves the fader of whichever is playing, and room buttons put the auditorium and music buses back to -20 dB. Bluetooth keeps the level its own dial on Audio Source set.
+7. Send every wireless mic channel to Bus 13, post-fader, and take them out of Main 1. Name Bus 13 MICS and set its fader to -10 dB. While the Lobby Stage plays, the band reaches the zones through Main 1 and the mics through Bus 13, so they never arrive twice.
 8. Name Matrix 1 to 5 after the zones above. Set Matrix 3, 4 and 5 to mono.
 9. On every zone matrix, set the sends from Bus 14, Bus 15, Bus 16 and Main 1 to 0 dB, then turn them off. That is 20 sends.
 10. On every zone matrix, set the send from Bus 13 to 0 dB and leave it on. Companion never touches these 5 sends. A zone that is off is muted, so its mics go quiet too.
 11. On the ROUTING screen, assign Local outputs 1 to 7 as listed above.
-12. Add zone EQ, delay and a limiter on each matrix. Outdoor and soffit will need different tuning from the mains.
+12. Add zone EQ, delay and a limiter on each matrix. The two entries will need different tuning from the lobby.
 13. Play the Wing's oscillator as pink noise through each zone. With the matrix fader at 0 dB, set the amp gain to the loudest level you would ever accept.
 14. With a mic in the room and Bus 13 at 0 dB, set each mic channel's level just below feedback in the loudest zone. The Mic dial stops at 0 dB, so a volunteer can't push the mics into feedback.
 15. Save this as a snapshot called Lobby Base, and keep a copy in the repo.

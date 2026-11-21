@@ -41,37 +41,55 @@ WING_IP, ODE_IP, WIIM_IP = "192.168.50.20", "192.168.50.31", "192.168.50.40"
 POWER_IP = "192.168.50.45"  # network relay that closes the Furman sequencer's remote contact, which powers the amps
 ARTNET_UNIVERSE = 0
 
-ZONES = [  # number, name, matrix, default fader in dB, page, icon
-    (1, "Mains", 1, -6, 4, "speaker"),
-    (2, "Outdoor", 2, -10, 5, "tree"),
-    (3, "Soffit", 3, -10, 6, "soffit"),
-    (4, "Bathrooms", 4, -12, 7, "restroom"),
-    (5, "Vestibule", 5, -12, 8, "door"),
+ZONES = [  # number, name, matrix, normal fader in dB, icon. Audio Zones shows them in this order
+    (1, "Lobby", 1, -6, "lobby"),
+    (2, "Main Entry", 2, -10, "entry"),    # the courtyard speakers
+    (3, "North Entry", 3, -10, "north"),   # the 70V speakers under the soffit
+    (4, "Bathrooms", 4, -12, "restroom"),
+    (5, "Vestibule", 5, -12, "door"),
 ]
-SOURCES = [  # name, Wing send source, label on key, icon
+SOURCES = [  # name, Wing send source, label in Library blocks, icon
     ("Auditorium", "/bus/14", "Auditorium", "church"),
     ("Playlist", "/bus/15", "Playlist", "note"),
     ("Bluetooth", "/bus/16", "Bluetooth", "bluetooth"),
-    ("Lobby Mix", "/main/1", "Lobby Mix", "mic"),
+    ("Lobby Stage", "/main/1", "Lobby Stage", "stage"),
 ]
 MIC_BUS = 13  # wireless mics, always sent to every zone matrix
-LOOKS = [  # number, linear %, fixtures %. Starting points: holding a Lights key saves over them
+LOOKS = [  # number, linear %, every light area's %. Starting points: holding a Lights key saves over them
     (1, 35, 35),
     (2, 65, 65),
     (3, 100, 100),
 ]
+LIGHT_AREAS = [  # number, name, icon, DMX channels. The channels are placeholders until the fixtures are chosen
+    (1, "Cafe", "cup", "9-12"),
+    (2, "Chandeliers", "chandelier", "13-16"),
+    (3, "Entry Hall", "hall", "17-20"),
+    (4, "Sconces", "sconce", "21-24"),
+    (5, "Soffit", "soffit", "25-28"),
+    (6, "Fireplace", "flame", "29-30"),
+    (7, "Outside", "lamppost", "31-32"),
+]
+
+
+def slug(name):
+    return name.lower().replace(" ", "_")
+
+
 LIGHT_GROUPS = [  # DMX channels, level that drives them, DMX value at 100%, what they are
     ("1-8", "lt_linear", 255, "Linear house lights, through 0-10V decoders"),
-    ("9-32", "lt_fix", 255, "Every other fixture's intensity channel"),
+    *[(channels, f"lt_{slug(name)}", 255, f"{name}, placeholder channels until the fixtures are patched")
+      for _, name, _, channels in LIGHT_AREAS],
 ]
 STATIC_CHANNELS = []  # (DMX channels, value), for channels that never change, like a fixture's mode
-PLAYLISTS = [(1, "Morning", "sunrise"), (2, "Everyday", "calendar"), (3, "Evening", "sunset"),
-             (4, "Seasonal", "star")]
+PLAYLISTS = [  # number, which is also its WiiM preset, name, icon
+    (1, "Morning", "sunrise"), (2, "Everyday", "calendar"), (3, "Evening", "sunset"), (4, "Seasonal", "star"),
+    (5, "Calm", "waves"), (6, "Pop", "headphones"), (7, "Upbeat", "bolt"),
+]
 SCENES = [  # name, label on key, icon, source per zone
     ("Auditorium", "Auditorium", "church", ["Auditorium", "Off", "Off", "Auditorium", "Auditorium"]),
     ("Music Inside", "Inside", "home", ["Playlist", "Off", "Off", "Playlist", "Playlist"]),
     ("Music Everywhere", "Everywhere", "broadcast", ["Playlist"] * 5),
-    ("Lobby Event", "Lobby Event", "mic", ["Lobby Mix", "Off", "Off", "Lobby Mix", "Lobby Mix"]),
+    ("Lobby Stage", "Lobby Stage", "stage", ["Lobby Stage", "Off", "Off", "Lobby Stage", "Lobby Stage"]),
     ("Bluetooth", "Bluetooth", "bluetooth", ["Bluetooth", "Off", "Off", "Bluetooth", "Bluetooth"]),
     ("All Audio Off", "Audio Off", "mute", ["Off"] * 5),
 ]
@@ -86,11 +104,12 @@ CLOSE_HOLD_MS = 1500
 SAVED_MS = 2000
 VOL_MIN, VOL_MAX = -60, 0          # every zone fader stays inside this range
 SRC_MIN, SRC_MAX = -60, 6          # the Volume dial moves the playing source's fader inside this range
+SRC_NORMAL = -20                   # a source fader's normal level, which the panels call Normal. Leaves 26 dB to go up
 VOLUME_SOURCES = [  # zone source, its Wing fader, the variable that keeps it, panel title, color
     ("Auditorium", "/bus/14", "aud_level", "AUDITORIUM", "audio"),
     ("Playlist", "/bus/15", "music_level", "MUSIC", "music"),
     ("Bluetooth", "/bus/16", "bt_level", "BLUETOOTH", "audio"),
-    ("Lobby Mix", "/main/1", "lobby_level", "LOBBY MIX", "audio"),
+    ("Lobby Stage", "/main/1", "lobby_level", "LOBBY STAGE", "audio"),
 ]
 MIC_MIN, MIC_MAX = -60, 0
 MIC_START = -10                    # Bus 13's level in the Lobby Base snapshot
@@ -112,7 +131,6 @@ PALETTE = {  # rest top, rest bottom, glyph at rest, active top, active bottom, 
           c, mix(c, "#000000", 0.40), c)
     for cat, c in ACCENTS.items()
 }
-LOCKED_ART = ("#272a2f", "#131518", "#5d646d")
 TRACK = "#262b32"
 DIM = "#59616b"
 BADGE = "#ff9d3c"
@@ -245,7 +263,17 @@ def tmpl(*parts):
 
 IPAD = "$(custom:light_mode) == 'ipad'"
 DECK = "$(custom:light_mode) == 'deck'"
-ALL, LIN, FIX, LOOK = "$(custom:lt_all)", "$(custom:lt_linear)", "$(custom:lt_fix)", "$(custom:lt_look)"
+ALL, LIN, LOOK = "$(custom:lt_all)", "$(custom:lt_linear)", "$(custom:lt_look)"
+AREA = {n: f"$(custom:lt_{slug(name)})" for n, name, *_ in LIGHT_AREAS}
+AREA_PICK, ZONE_PICK = "$(custom:lt_pick)", "$(custom:zone_pick)"
+
+
+def pick_chain(picked, values, otherwise):
+    """An expression giving the value for whichever number is picked."""
+    chain = otherwise
+    for n, value in reversed(list(values.items())):
+        chain = f"{picked} == {n} ? {value} : ({chain})"
+    return f"({chain})"
 LIGHTS_ON = f"{ALL} > 0"
 TURN_N = "$(custom:turn_n)"  # steps for the dial click being handled, set by the dial before its block runs
 
@@ -296,8 +324,16 @@ def _first_source():
 
 # What the Volume dial controls: the source of the first zone that is on, or nothing while the audio is off
 CUR_SRC = f"({POWERED} ? ({_first_source()}) : 'Off')"
+PICKED_SRC = pick_chain(ZONE_PICK, {z: f"$(custom:z{z}_src)" for z, *_ in ZONES}, "'Off'")
 SRC_NOW = {name: tracked(f"$(wing:{sel.strip('/').replace('/', '')}_level)", var)
            for name, sel, var, _, _ in VOLUME_SOURCES}
+
+
+def plays_next(source):
+    """True when a zone being switched on should play this source: what the other zones play, or the last source
+    played when nothing is playing."""
+    first = _first_source()
+    return f"({first}) == '{source}' || (({first}) == 'Off' && $(custom:audio_last) == '{source}')"
 
 
 def with_source(body):
@@ -375,6 +411,9 @@ class Key:
     labels: dict = field(default_factory=dict)  # label to show in a state, when it changes
     does: str = ""
     show: dict | None = None         # the display, for touch strip keys
+    pick: str | None = None          # true while this key is the one picked for a dial: it shows a white ring
+    bar: dict | None = None          # a level bar along the bottom of the key: pct and color expressions
+    sub: str | None = None           # a live line above the label
 
     @property
     def loc(self):
@@ -382,11 +421,11 @@ class Key:
 
 
 PAGES = {  # every station is a Stream Deck +, and they all share these pages
-    1: ("Home", "deck"), 2: ("More", "deck"), 3: ("Playlists", "deck"),
-    4: ("Zone Mains", "deck"), 5: ("Zone Outdoor", "deck"), 6: ("Zone Soffit", "deck"),
-    7: ("Zone Bathrooms", "deck"), 8: ("Zone Vestibule", "deck"),
+    1: ("Home", "deck"), 2: ("More", "deck"), 3: ("Playlists", "deck"), 4: ("Light Control", "deck"),
+    5: ("Audio Source", "deck"), 6: ("Audio Zones", "deck"),
     20: ("Library: Zones", "library"), 21: ("Library: Music and Rooms", "library"),
-    22: ("Library: Lights and Dials", "library"),
+    22: ("Library: Lights and Dials", "library"), 23: ("Library: Light Areas", "library"),
+    24: ("Library: Zone Switches and Bluetooth", "library"),
 }
 BOUNDS = {"deck": (4, 4), "library": (4, 8)}
 KEYS: dict[str, Key] = {}
@@ -420,10 +459,22 @@ COMPUTE, APPLY_FADE, APPLY_QUICK, IPAD_TOGGLE = "22/1/0", "22/1/1", "22/1/2", "2
 ALL_UP, ALL_DOWN, LIN_UP, LIN_DOWN = "22/1/4", "22/1/5", "22/1/6", "22/1/7"
 LIN_RESET, VOL_UP, VOL_DOWN, MIC_UP, MIC_DOWN, MIC_MUTE, CLOSE_UP, VOL_RESET = (
     "22/2/0", "22/2/1", "22/2/2", "22/2/3", "22/2/4", "22/2/5", "22/2/6", "22/2/7")
+AREA_UP = {n: f"23/0/{n - 1}" for n, *_ in LIGHT_AREAS}
+AREA_DOWN = {n: f"23/1/{n - 1}" for n, *_ in LIGHT_AREAS}
+AREA_RESET = {n: f"23/2/{n - 1}" for n, *_ in LIGHT_AREAS}
+PICKED_AREA_UP, PICKED_AREA_DOWN, PICKED_AREA_RESET = "23/3/0", "23/3/1", "23/3/2"
+ZONE_ON = {z: f"24/0/{z - 1}" for z, *_ in ZONES}
+ZONE_OFF = {z: f"24/1/{z - 1}" for z, *_ in ZONES}
+ZONE_SWITCH, PICKED_ZONE_UP, PICKED_ZONE_DOWN, PICKED_ZONE_RESET = "24/2/0", "24/2/1", "24/2/2", "24/2/3"
+BT_UP, BT_DOWN, BT_RESET = "24/3/0", "24/3/1", "24/3/2"
+IPAD_KEY = "2/1/0"  # iPad Mode, on More
 
 
 def lib(loc, label, down, does):
     return add(*at(loc), label=label, kind="lib", down=down, does=does)
+
+
+LIGHT_LEVELS = ["linear"] + [slug(name) for _, name, *_ in LIGHT_AREAS]  # what a look saves
 
 
 def look_level(n, group):
@@ -439,21 +490,23 @@ def current_look(group):
 
 def build_library():
     # Page 20 and row 0 of page 21: one block per zone and source
-    for z, name, mx, _, _, _ in ZONES:
+    for z, name, mx, _, _ in ZONES:
         sel = f"/mtx/{mx}"
         for s, (source, _, _, _) in enumerate(SOURCES):
             acts = [wing_send(src, mx, src == SOURCES[s][1]) for _, src, _, _ in SOURCES]
-            acts += [wing_mute(sel, False), setvar(f"z{z}_src", source)]
+            acts += [wing_mute(sel, False), setvar(f"z{z}_src", source), setvar("audio_last", source)]
             lib(zone_block(z, s), f"Z{z}\n{source}", acts, f"{name} plays {source}")
         lib(zone_block(z, 4), f"Z{z}\nOff", [wing_mute(sel, True), setvar(f"z{z}_src", "Off")], f"{name} off")
     normal = []
-    for z, _, mx, db, _, _ in ZONES:
+    for z, _, mx, db, _ in ZONES:
         normal += [wing_level(f"/mtx/{mx}", db), setvar(f"z{z}_level", db)]
     for name, sel, var, _, _ in VOLUME_SOURCES:
-        if name != "Lobby Mix":  # Main 1 belongs to whoever is mixing the band, so room buttons leave it alone
-            normal += [wing_level(sel, 0), setvar(var, 0)]
+        # Main 1 belongs to whoever is mixing the band, and Bluetooth keeps the level its dial set
+        if name not in ("Lobby Stage", "Bluetooth"):
+            normal += [wing_level(sel, SRC_NORMAL), setvar(var, SRC_NORMAL)]
     lib(DEFAULT_LEVELS, "Default\nLevels", normal,
-        "Resets every zone fader to its normal level, and the auditorium, music and Bluetooth faders to 0 dB")
+        f"Resets every zone fader to its normal level, and the auditorium and music faders to {SRC_NORMAL} dB. Bluetooth "
+        "keeps the level its dial set, and Main 1 stays with the band's mixer")
     # Music
     lib(MUSIC_PLAY, "Music\nPlay", [wiim("MCUKeyShortClick:$(custom:music_n)"), wait(2000),
                                     wiim("setPlayerCmd:loopmode:2")],
@@ -498,9 +551,9 @@ def build_library():
     for n, *_ in LOOKS:
         lib(LOOK_LOC[n], f"Look {n}", [when(DECK, [
             setvar("lt_look", n), setvar("lt_all", 100),
-            setexpr("lt_linear", look_level(n, "linear")), setexpr("lt_fix", look_level(n, "fix")),
+            *[setexpr(f"lt_{g}", look_level(n, g)) for g in LIGHT_LEVELS],
             wait(20), press(APPLY_FADE)])],
-            f"Fades to Lights {n} at full, unless iPad Mode is on")
+            f"Fades to Lights {n} at full, every area at its saved level, unless iPad Mode is on")
     lib(LIGHTS_OFF, "Lights\nOff", [when(DECK, [setvar("lt_all", 0), wait(20), press(APPLY_FADE)])],
         "Fades the lights out and keeps the look, so the All Lights dial can bring it back")
     lib(LIGHTS_TOGGLE, "Lights\nOn/Off", [when(DECK, [when(LIGHTS_ON, [press(LIGHTS_OFF)], [
@@ -508,14 +561,13 @@ def build_library():
         "Turns the lights off, or back on to the last look")
     for n, *_ in LOOKS:
         lib(SAVE_LOC[n], f"Save {n}", [when(f"{DECK} && {LIGHTS_ON}", [
-            setexpr(f"look{n}_linear", f"round({LIN} * {ALL} / 100)"),
-            setexpr(f"look{n}_fix", f"round({FIX} * {ALL} / 100)"),
-            wait(20), keep(f"look{n}_linear"), keep(f"look{n}_fix"),
+            *[setexpr(f"look{n}_{g}", f"round($(custom:lt_{g}) * {ALL} / 100)") for g in LIGHT_LEVELS],
+            wait(20), *[keep(f"look{n}_{g}") for g in LIGHT_LEVELS],
             setvar("lt_look", n), setvar("lt_all", 100),
-            setexpr("lt_linear", look_level(n, "linear")), setexpr("lt_fix", look_level(n, "fix")),
+            *[setexpr(f"lt_{g}", look_level(n, g)) for g in LIGHT_LEVELS],
             setvar("lt_saved", n), wait(20), press(APPLY_QUICK),
             wait(SAVED_MS), setvar("lt_saved", 0)])],
-            f"Saves the lights as they are now into Lights {n}")
+            f"Saves the lights as they are now, the linear lights and every area, into Lights {n}")
     lib(COMPUTE, "Compute\nDMX", [setexpr("dmx_cmd", compute_expr())],
         "Works out every channel from the levels. The patch lives here")
     lib(APPLY_FADE, "Apply\nFade", [press(COMPUTE), wait(20), dmx_send(FADE_MS)],
@@ -541,12 +593,14 @@ def build_library():
                 for name, sel, var, _, _ in VOLUME_SOURCES]
 
     lib(VOL_UP, "Volume\nUp", source_step(1),
-        f"Raises whatever is playing by 1 dB for each step in `turn_n`, up to {SRC_MAX} dB over normal")
+        f"Raises whatever is playing by 1 dB for each step in `turn_n`, up to {SRC_MAX} dB, "
+        f"{SRC_MAX - SRC_NORMAL} dB over normal")
     lib(VOL_DOWN, "Volume\nDown", source_step(-1),
         f"Lowers whatever is playing by 1 dB for each step in `turn_n`, down to {SRC_MIN} dB")
-    lib(VOL_RESET, "Volume\nReset", [when(f"{CUR_SRC} == '{name}'", [wing_level(sel, 0), setvar(var, 0)])
-                                      for name, sel, var, _, _ in VOLUME_SOURCES],
-        "Puts whatever is playing back to its normal level, 0 dB")
+    lib(VOL_RESET, "Volume\nReset", [when(f"{CUR_SRC} == '{name}'",
+                                          [wing_level(sel, SRC_NORMAL), setvar(var, SRC_NORMAL)])
+                                     for name, sel, var, _, _ in VOLUME_SOURCES],
+        f"Puts whatever is playing back to its normal level, {SRC_NORMAL} dB")
     mic = f"/bus/{MIC_BUS}"
     lib(MIC_UP, "Mic\nUp", [when(POWERED, [fader_step("mic_level", MIC_NOW, mic, MIC_MIN, MIC_MAX, 1)])],
         f"Raises the mic bus by 1 dB for each step in `turn_n`, stopping at {MIC_MAX} dB. Only while the audio is on")
@@ -556,7 +610,59 @@ def build_library():
                                                      [wing_mute(mic, True), setvar("mic_muted", 1)])])],
         "Mutes or unmutes the mic bus. Only while the audio is on")
     lib(CLOSE_UP, "Close\nUp", [setvar("light_mode", "deck"), wait(20), press(LIGHTS_OFF), press(POWER_OFF)],
-        "Leaves iPad Mode, then turns off the lights and the audio system")
+        "Leaves iPad Mode, then turns off the lights and the audio system. The night schedule runs it")
+
+    # Page 23: each light area, and the picked one, for Light Control's dial
+    for n, name, _, _ in LIGHT_AREAS:
+        g, var = slug(name), AREA[n]
+        alone = [setvar(f"lt_{o}", 0) for o in LIGHT_LEVELS if o != g]
+        lib(AREA_UP[n], f"{name}\nUp", [when(DECK, [
+            setexpr(f"lt_{g}", f"min(100, ({LIGHTS_ON} ? {var} : 0) + {LIGHT_STEP} * {TURN_N})"),
+            when(f"!({LIGHTS_ON})", alone + [setvar("lt_all", 100)]),
+            wait(10), press(APPLY_QUICK)])],
+            f"Raises {name} by {LIGHT_STEP}% for each step in `turn_n`, stopping at 100%. With the lights off, it "
+            f"brings {name} up on its own and leaves every other light off")
+        lib(AREA_DOWN[n], f"{name}\nDown", [when(f"{DECK} && {LIGHTS_ON}", [
+            setexpr(f"lt_{g}", f"max(0, {var} - {LIGHT_STEP} * {TURN_N})"), wait(10), press(APPLY_QUICK)])],
+            f"Lowers {name} by {LIGHT_STEP}% for each step in `turn_n`, stopping at 0%. Does nothing with the lights off")
+        lib(AREA_RESET[n], f"{name}\nReset", [when(DECK, [setexpr(f"lt_{g}", current_look(g)), wait(20),
+                                                           press(APPLY_FADE)])],
+            f"Puts {name} back to the current look's level")
+    for loc, label, blocks, does in ((PICKED_AREA_UP, "Area\nUp", AREA_UP, "Raises"),
+                                     (PICKED_AREA_DOWN, "Area\nDown", AREA_DOWN, "Lowers"),
+                                     (PICKED_AREA_RESET, "Area\nReset", AREA_RESET, "Resets")):
+        lib(loc, label, [when(f"{AREA_PICK} == {n}", [press(blocks[n])]) for n, *_ in LIGHT_AREAS],
+            f"{does} the area picked on Light Control")
+
+    # Page 24: each zone on and off, the picked zone, and the Bluetooth level
+    for z, name, mx, db, _ in ZONES:
+        acts = [press(POWER_ON)]
+        for i, (source, *_rest) in enumerate(SOURCES):
+            start = [press(MUSIC_START), wait(50)] if source == "Playlist" else []
+            acts.append(when(plays_next(source), start + [press(zone_block(z, i))]))
+        lib(ZONE_ON[z], f"Z{z}\nOn", acts,
+            f"Turns the audio system on if it's off. {name} plays what the other zones are playing, or the last "
+            "source played if nothing is")
+        lib(ZONE_OFF[z], f"Z{z}\nOff", [press(zone_block(z, 4)), wait(200), press(MUSIC_STOP)],
+            f"Turns {name} off, and stops the player once no zone is using it")
+    lib(ZONE_SWITCH, "Zone\nOn/Off", [when(f"{ZONE_PICK} == {z}", [when(
+        f"$(custom:z{z}_src) != 'Off'", [press(ZONE_OFF[z])], [press(ZONE_ON[z])])]) for z, *_ in ZONES],
+        "Turns the zone picked on Audio Zones off, or on")
+    for loc, label, sign in ((PICKED_ZONE_UP, "Zone\nUp", 1), (PICKED_ZONE_DOWN, "Zone\nDown", -1)):
+        lib(loc, label, [when(f"{ZONE_PICK} == {z} && {POWERED}", [zone_step(z, mx, sign)])
+                         for z, _, mx, *_ in ZONES],
+            f"{'Raises' if sign > 0 else 'Lowers'} the picked zone by 1 dB for each step in `turn_n`, inside "
+            f"{VOL_MIN} to {VOL_MAX} dB. Only while the audio is on")
+    lib(PICKED_ZONE_RESET, "Zone\nReset", [when(f"{ZONE_PICK} == {z} && {POWERED}", [
+        wing_level(f"/mtx/{mx}", db), setvar(f"z{z}_level", db)]) for z, _, mx, db, _ in ZONES],
+        "Puts the picked zone back to its normal level. Only while the audio is on")
+    _, bt_sel, bt_var, _, _ = next(v for v in VOLUME_SOURCES if v[0] == "Bluetooth")
+    for loc, label, sign in ((BT_UP, "Bluetooth\nUp", 1), (BT_DOWN, "Bluetooth\nDown", -1)):
+        lib(loc, label, [when(POWERED, [fader_step(bt_var, SRC_NOW["Bluetooth"], bt_sel, SRC_MIN, SRC_MAX, sign)])],
+            f"{'Raises' if sign > 0 else 'Lowers'} Bluetooth by 1 dB for each step in `turn_n`, inside {SRC_MIN} to "
+            f"{SRC_MAX} dB, whether or not it is playing. Only while the audio is on")
+    lib(BT_RESET, "Bluetooth\nReset", [when(POWERED, [wing_level(bt_sel, SRC_NORMAL), setvar(bt_var, SRC_NORMAL)])],
+        f"Puts Bluetooth back to its normal level, {SRC_NORMAL} dB. Only while the audio is on")
 
 
 # ---------------------------------------------------------------- displays
@@ -570,6 +676,15 @@ def light_display():
     }
 
 
+def from_normal(level):
+    """A source fader's level as the panel says it: Normal, or how far from normal, such as +3 dB."""
+    d = f"({level} - ({SRC_NORMAL}))"
+    return f"round({d}) == 0 ? 'Normal' : " + tmpl(X(f"{d} > 0 ? '+' : ''"), X(f"round({d})"), " dB")
+
+
+NORMAL_TICK = (SRC_NORMAL - SRC_MIN) * 100 / (SRC_MAX - SRC_MIN)  # where Normal sits along a source panel's bar
+
+
 LINEAR_DISPLAY = {
     "title": "LINEAR", "art": "linear",
     "value": f"{IPAD} ? 'iPad' : " + tmpl(X(LIN), "%"),
@@ -579,11 +694,10 @@ LINEAR_DISPLAY = {
 }
 VOLUME_DISPLAY = {
     "title": f"c = {CUR_SRC};\n" + source_pick({n: f"'{t}'" for n, _, _, t, _ in VOLUME_SOURCES}, "'VOLUME'"),
-    "title_expr": True, "art": "audio",
-    "value": with_source("c == 'Off' ? 'Off' : (round(v) == 0 ? 'Normal' : "
-                         + tmpl(X("v > 0 ? '+' : ''"), X("round(v)"), " dB") + ")"),
+    "title_expr": True, "art": "audio", "doc": "What is playing and its volume from normal",
+    "value": with_source(f"c == 'Off' ? 'Off' : ({from_normal('v')})"),
     "pct": with_source(f"c == 'Off' ? 0 : max(0, min(100, (v - ({SRC_MIN})) * 100 / {SRC_MAX - SRC_MIN}))"),
-    "tick": -SRC_MIN * 100 / (SRC_MAX - SRC_MIN),
+    "tick": NORMAL_TICK,
     "color": f"c = {CUR_SRC};\n" + source_pick({n: f"'{accent(cat)}'" for n, _, _, _, cat in VOLUME_SOURCES},
                                                 f"'{DIM}'"),
     "value_color": f"c = {CUR_SRC};\nc == 'Off' ? '{DIM}' : '#ffffff'",
@@ -601,22 +715,42 @@ MIC_DISPLAY = {
 }
 
 
-def zone_display(zone):
-    z, name, mx, *_ = zone
-    src = f"$(custom:z{z}_src)"
-    return {
-        "title": tmpl(name.upper(), " · ", X(src)), "title_expr": True, "art": f"zone-{zone[5]}",
-        "value": f"{src} == 'Off' ? 'Off' : " + db_text(ZONE_NOW[z]),
-        "pct": db_pct(ZONE_NOW[z], VOL_MIN, VOL_MAX),
-        "color": f"{src} == 'Off' ? '{DIM}' : '{accent('audio')}'",
-        "value_color": f"{src} == 'Off' ? '{DIM}' : '#ffffff'",
-        "dim": UNPOWERED,
-    }
+AREA_LEVEL = pick_chain(AREA_PICK, AREA, "0")
+AREA_DISPLAY = {
+    "title": pick_chain(AREA_PICK, {n: f"'{name.upper()}'" for n, name, *_ in LIGHT_AREAS}, "'AREA'"),
+    "title_expr": True, "art": "area", "doc": "The picked area and its level",
+    "value": f"{IPAD} ? 'iPad' : " + tmpl(X(AREA_LEVEL), "%"),
+    "pct": f"{IPAD} ? 0 : {AREA_LEVEL}",
+    "color": f"{IPAD} ? '{accent('ipad')}' : ({LIGHTS_ON} ? '{accent('light')}' : '{DIM}')",
+    "value_color": f"{IPAD} ? '{accent('ipad')}' : ({LIGHTS_ON} ? '#ffffff' : '{DIM}')",
+}
+BT_NOW = SRC_NOW["Bluetooth"]
+BT_DISPLAY = {
+    "title": "BLUETOOTH", "art": "bluetooth",
+    "value": f"{UNPOWERED} ? 'Off' : ({from_normal(BT_NOW)})",
+    "pct": f"{UNPOWERED} ? 0 : " + db_pct(BT_NOW, SRC_MIN, SRC_MAX),
+    "tick": NORMAL_TICK,
+    "color": f"{UNPOWERED} ? '{DIM}' : '{accent('audio')}'",
+    "value_color": f"{UNPOWERED} ? '{DIM}' : '#ffffff'",
+    "badge": f"!({WING_ONLINE})",
+    "dim": UNPOWERED,
+}
+ZONE_LEVEL = pick_chain(ZONE_PICK, ZONE_NOW, "0")
+ZONE_DISPLAY = {
+    "title": tmpl(X(pick_chain(ZONE_PICK, {z: f"'{name.upper()}'" for z, name, *_ in ZONES}, "'ZONE'")), " · ",
+                  X(PICKED_SRC)),
+    "title_expr": True, "art": "zone", "doc": "The picked zone, its source and level",
+    "value": f"{PICKED_SRC} == 'Off' ? 'Off' : " + db_text(ZONE_LEVEL),
+    "pct": db_pct(ZONE_LEVEL, VOL_MIN, VOL_MAX),
+    "color": f"{PICKED_SRC} == 'Off' ? '{DIM}' : '{accent('audio')}'",
+    "value_color": f"{PICKED_SRC} == 'Off' ? '{DIM}' : '#ffffff'",
+    "dim": UNPOWERED,
+}
 
 
 # ---------------------------------------------------------------- keys people use
-def nav(page, row, col, target, label, icon, does=None):
-    return add(page, row, col, label=label, icon=icon, down=[setpage(target)],
+def nav(page, row, col, target, label, icon, does=None, cat="nav"):
+    return add(page, row, col, label=label, icon=icon, cat=cat, down=[setpage(target)],
                does=does or f"Opens {PAGES[target][0]}")
 
 
@@ -627,7 +761,7 @@ def scene_key(page, r, c, name, label=None, cat="audio"):
 
 
 SOURCE_NOUN = {"Auditorium": "the auditorium feed", "Playlist": "music", "Bluetooth": "Bluetooth",
-               "Lobby Mix": "the lobby mix"}
+               "Lobby Stage": "the lobby stage"}
 
 
 def source_key(page, r, c, scene, source, label, icon, cat="audio"):
@@ -656,10 +790,13 @@ def lights_off_key(page, r, c):
 
 
 def look_key(page, r, c, n):
+    """A look. The one playing glows green, like the audio power key while the audio is on, so a glance at Home
+    shows the lights and the audio are both on."""
     add(page, r, c, label=f"Lights {n}", icon=f"level{n}", cat="light",
-        fb=[(f"{LOOK} == {n} && {LIGHTS_ON}", "active"), (IPAD, "locked"), (f"$(custom:lt_saved) == {n}", "saved")],
+        fb=[(f"{LOOK} == {n} && {LIGHTS_ON}", "on"), (IPAD, "locked"), (f"$(custom:lt_saved) == {n}", "saved")],
         labels={"saved": "Saved"}, up=[press(LOOK_LOC[n])], hold=(SAVE_HOLD_MS, [press(SAVE_LOC[n])]),
-        does=f"Tap for Lights {n}. Hold {SAVE_HOLD_MS // 1000} seconds to save the lights as they are now into it")
+        does=f"Tap for Lights {n}. Green while it plays. Hold {SAVE_HOLD_MS // 1000} seconds to save the lights as "
+             "they are now into it")
 
 
 def strip(page, col, show, does):
@@ -672,7 +809,46 @@ def dial(page, col, label, push, left, right, does, turn):
         right=turned(f"{turn}+") + right, does=does)
 
 
-def deck_dials(page, zone=None):
+def blank(page, r, c):
+    """A key with nothing on it yet. It still shows its piece of the page's picture."""
+    add(page, r, c, kind="blank", does="Nothing yet")
+
+
+def area_key(page, r, c, n, name, icon):
+    level = AREA[n]
+    add(page, r, c, label=name, icon=icon, cat="light", down=[setvar("lt_pick", n)],
+        fb=[(f"{LIGHTS_ON} && {level} > 0", "active"), (IPAD, "locked")], pick=f"{AREA_PICK} == {n}",
+        bar={"pct": f"{IPAD} ? 0 : {level}",
+             "color": f"{IPAD} || !({LIGHTS_ON}) ? '{DIM}' : '{accent('light')}'"},
+        does=f"Tap to pick {name} for the Area dial. Lit while {name} is on, with its level along the bottom")
+
+
+def zone_key(page, r, c, zone):
+    """A zone. Like the switch beside it, it is green while it plays and red while it's off, whatever piece of the
+    picture it sits on."""
+    z, name, *_ = zone
+    src = f"$(custom:z{z}_src)"
+    add(page, r, c, label=name, icon=zone[4], cat="off", down=[setvar("zone_pick", z)],
+        fb=[(f"{src} != 'Off'", "on"), (f"{src} == 'Off'", "active")], pick=f"{ZONE_PICK} == {z}",
+        bar={"pct": f"{UNPOWERED} ? 0 : " + db_pct(ZONE_NOW[z], VOL_MIN, VOL_MAX),
+             "color": f"{src} == 'Off' ? '{DIM}' : '{accent('power')}'"},
+        does=f"Tap to pick {name} for the Zone dial and the switch beside it. Green while it plays and red while "
+             "it's off, with its level along the bottom")
+
+
+def zone_switch_key(page, r, c):
+    """Turns the picked zone on or off. Like the audio power key, its color shows the state and its label says
+    what a press does."""
+    add(page, r, c, label="Turn On", icon="power", cat="off", down=[press(ZONE_SWITCH)],
+        fb=[(f"{PICKED_SRC} != 'Off'", "on"), (f"{PICKED_SRC} == 'Off'", "active")],
+        labels={"on": "Turn Off", "active": "Turn On"},
+        sub=pick_chain(ZONE_PICK, {z: f"'{name}'" for z, name, *_ in ZONES}, "''"),
+        does="Shows the picked zone's name. Green while it plays, saying Turn Off: press to turn it off. Red while "
+             "it's off, saying Turn On: press to play what the other zones play, turning the audio system on "
+             "if it is off")
+
+
+def deck_dials(page, third="volume"):
     strip(page, 0, light_display(), "Touch strip: the All Lights level, Off, or iPad")
     dial(page, 0, "All Lights", [press(LIGHTS_TOGGLE)], [press(ALL_DOWN)], [press(ALL_UP)],
          f"Turn to dim or brighten every light, {LIGHT_STEP}% a click, more when turned quickly. "
@@ -681,19 +857,28 @@ def deck_dials(page, zone=None):
     dial(page, 1, "Linear", [press(LIN_RESET)], [press(LIN_DOWN)], [press(LIN_UP)],
          f"Turn to set just the linear lights, {LIGHT_STEP}% a click, more when turned quickly. "
          "Push to put them back to the look", "lin")
-    if zone is None:
+    if third == "volume":
         strip(page, 2, VOLUME_DISPLAY, "Touch strip: what is playing, and its volume from normal, or Off")
         dial(page, 2, "Volume", [press(VOL_RESET)], [press(VOL_DOWN)], [press(VOL_UP)],
              "Turn for the volume of whatever is playing, 1 dB a click, more when turned quickly: the auditorium "
-             "feed, music, Bluetooth or the lobby mix. Push to put it back to normal. Does nothing while the audio "
+             "feed, music, Bluetooth or the lobby stage. Push to put it back to normal. Does nothing while the audio "
              "is off or nothing plays", "vol")
+    elif third == "area":
+        strip(page, 2, AREA_DISPLAY, "Touch strip: the picked area and its level")
+        dial(page, 2, "Area", [press(PICKED_AREA_RESET)], [press(PICKED_AREA_DOWN)], [press(PICKED_AREA_UP)],
+             f"Turn to set the picked area, {LIGHT_STEP}% a click, more when turned quickly. With the lights off, "
+             "turning up brings that area on by itself. Push to put it back to the look", "area")
+    elif third == "bluetooth":
+        strip(page, 2, BT_DISPLAY, "Touch strip: the Bluetooth level from normal, or Off")
+        dial(page, 2, "Bluetooth", [press(BT_RESET)], [press(BT_DOWN)], [press(BT_UP)],
+             "Turn for the Bluetooth level, 1 dB a click, more when turned quickly, playing or not. It keeps that "
+             "level until it is turned again. Push to put it back to normal. Does nothing while the audio is off",
+             "bt")
     else:
-        z, name, mx, db, *_ = zone
-        strip(page, 2, zone_display(zone), f"Touch strip: {name} source and level")
-        dial(page, 2, name, [when(POWERED, [wing_level(f"/mtx/{mx}", db), setvar(f"z{z}_level", db)])],
-             [when(POWERED, [zone_step(z, mx, -1)])], [when(POWERED, [zone_step(z, mx, 1)])],
-             f"Turn for {name} volume, 1 dB a click, more when turned quickly. Push to put {name} back to {db} dB. "
-             "Does nothing while the audio is off", f"z{z}")
+        strip(page, 2, ZONE_DISPLAY, "Touch strip: the picked zone, its source and level")
+        dial(page, 2, "Zone", [press(PICKED_ZONE_RESET)], [press(PICKED_ZONE_DOWN)], [press(PICKED_ZONE_UP)],
+             "Turn for the picked zone's volume, 1 dB a click, more when turned quickly. Push to put it back to "
+             "its normal level. Does nothing while the audio is off", "zone")
     strip(page, 3, MIC_DISPLAY, "Touch strip: the mic level, Muted, or Off while the audio is off")
     dial(page, 3, "Mics", [press(MIC_MUTE)], [press(MIC_DOWN)], [press(MIC_UP)],
          f"Turn for mic volume, 1 dB a click, more when turned quickly, up to {MIC_MAX} dB. "
@@ -716,47 +901,48 @@ def build_pages():
     source_key(1, 1, 2, "Music Inside", "Playlist", "Music", "note", cat="music")
     nav(1, 1, 3, 2, "More", "more")
     deck_dials(1)
-    # Page 2, more
-    source_key(2, 0, 0, "Bluetooth", "Bluetooth", "Bluetooth", "bluetooth")
-    source_key(2, 0, 1, "Lobby Event", "Lobby Mix", "Lobby Event", "mic")
-    scene_key(2, 0, 2, "Music Everywhere", cat="music")
+    # Page 2, more: the jumping-off point. Its dials match Home's
+    add(2, 0, 0, label="Light Control", icon="sliders", cat="light", down=[setpage(4)], fb=[(IPAD, "locked")],
+        does="Opens Light Control, to set each area of lights. Shows a lock in iPad Mode")
+    nav(2, 0, 1, 5, "Audio Source", "sources", "Opens Audio Source, to choose what plays", cat="audio")
+    nav(2, 0, 2, 6, "Audio Zones", "plan", "Opens Audio Zones, to turn each zone on or off and set its volume",
+        cat="audio")
     add(2, 0, 3, label="Playlists", icon="playlist", cat="music", down=[setpage(3)], does="Opens Playlists",
         fb=[(ANY_PLAYLIST, "active")])
-    nav(2, 1, 0, ZONES[0][4], "Zones", "sliders", "Opens the first zone page")
-    add(2, 1, 1, label="Close Up", icon="closeup", cat="off", hold=(CLOSE_HOLD_MS, [press(CLOSE_UP)]),
-        does=f"Hold {CLOSE_HOLD_MS / 1000:g} seconds to turn off the lights and the audio system, and leave iPad Mode",
-        fb=[(f"!({LIGHTS_ON}) && {UNPOWERED}", "active")])
-    ipad_key(2, 1, 2)
+    ipad_key(*at(IPAD_KEY))
+    blank(2, 1, 1)
+    blank(2, 1, 2)
     nav(2, 1, 3, 1, "Home", "home")
     deck_dials(2)
-    # Page 3, playlists
+    # Page 3, playlists: seven of them, and Home in the corner
     for n, name, icon in PLAYLISTS:
-        add(3, 0, n - 1, label=name, icon=icon, cat="music", down=[press(PLAYLIST_LOC[n])],
-            does=f"Chooses and plays {name}", fb=[(f"$(custom:music_n) == {n} && ({ANY_PLAYLIST})", "active")])
-    scene_key(3, 1, 0, "Music Inside", cat="music")
-    scene_key(3, 1, 1, "Music Everywhere", cat="music")
-    nav(3, 1, 2, 2, "Back", "back", "Opens More")
+        add(3, *divmod(n - 1, 4), label=name, icon=icon, cat="music", down=[press(PLAYLIST_LOC[n])],
+            does=f"Chooses and plays {name}. In a silent room it starts music inside",
+            fb=[(f"$(custom:music_n) == {n} && ({ANY_PLAYLIST})", "active")])
     nav(3, 1, 3, 1, "Home", "home")
     deck_dials(3)
-    # Pages 4 to 8, zones
+    # Page 4, light control: tap an area to pick it, then turn the Area dial
+    for n, name, icon, _ in LIGHT_AREAS:
+        area_key(4, *divmod(n - 1, 4), n, name, icon)
+    nav(4, 1, 3, 1, "Home", "home")
+    deck_dials(4, "area")
+    # Page 5, audio source: the sources, lit while they play
+    source_key(5, 0, 0, "Auditorium", "Auditorium", "Auditorium", "church")
+    source_key(5, 0, 1, "Music Inside", "Playlist", "Music", "note", cat="music")
+    source_key(5, 0, 2, "Bluetooth", "Bluetooth", "Bluetooth", "bluetooth")
+    source_key(5, 0, 3, "Lobby Stage", "Lobby Stage", "Lobby Stage", "stage")
+    blank(5, 1, 0)
+    blank(5, 1, 1)
+    nav(5, 1, 2, 2, "Back", "back", "Opens More")
+    nav(5, 1, 3, 1, "Home", "home")
+    deck_dials(5, "bluetooth")
+    # Page 6, audio zones: tap a zone to pick it, then switch it or turn the Zone dial
     for i, zone in enumerate(ZONES):
-        z, name, mx, _, page, icon = zone
-        for s, (source, _, label, sicon) in enumerate(SOURCES):
-            if source == "Playlist":
-                acts = [press(POWER_ON), press(MUSIC_START), wait(50), press(zone_block(z, s))]
-            else:
-                acts = [press(POWER_ON), press(zone_block(z, s)), wait(200), press(MUSIC_STOP)]
-            add(page, 0, s, label=label, icon=sicon, cat="audio", down=acts,
-                does=f"{name} plays {source}, turning the audio system on if it is off",
-                fb=[(f"$(custom:z{z}_src) == '{source}'", "active")])
-        add(page, 1, 0, label=f"{name} Off", icon="mute", cat="off", does=f"Turns off {name}",
-            down=[press(zone_block(z, 4)), wait(200), press(MUSIC_STOP)],
-            fb=[(f"$(custom:z{z}_src) == 'Off'", "active")])
-        prev_z, next_z = ZONES[(i - 1) % 5], ZONES[(i + 1) % 5]
-        nav(page, 1, 1, prev_z[4], prev_z[1], "prev", f"Opens {prev_z[1]}")
-        nav(page, 1, 2, next_z[4], next_z[1], "next", f"Opens {next_z[1]}")
-        nav(page, 1, 3, 1, "Home", "home")
-        deck_dials(page, zone)
+        zone_key(6, *divmod(i, 4), zone)
+    zone_switch_key(6, 1, 1)
+    nav(6, 1, 2, 2, "Back", "back", "Opens More")
+    nav(6, 1, 3, 1, "Home", "home")
+    deck_dials(6, "zone")
 
 
 TRIGGERS = {}
@@ -793,24 +979,29 @@ def build_triggers():
             does="Off at first. Nightly 22:00: Close Up, which also leaves iPad Mode so doors can't stay locked")
 
 
+LEVEL_NAMES = {"linear": "linear lights", **{slug(name): name for _, name, *_ in LIGHT_AREAS}}
 VARIABLES = {  # name: (description, default)
     "light_mode": ("deck, or ipad while the iPad has the lights", "deck"),
     "lt_look": ("Number of the current look", "2"),
     "lt_all": ("All Lights level, 0 to 100. 0 is off", "0"),
     "lt_linear": ("Linear lights level, 0 to 100", "65"),
-    "lt_fix": ("Other fixtures level, 0 to 100", "65"),
-    **{f"look{n}_{g}": (f"Lights {n} {'linear' if g == 'linear' else 'fixtures'} level, saved by holding its key",
-                        str(lin if g == "linear" else fix))
-       for n, lin, fix in LOOKS for g in ("linear", "fix")},
+    **{f"lt_{slug(name)}": (f"{name} level, 0 to 100", "65") for _, name, *_ in LIGHT_AREAS},
+    "lt_pick": (f"The light area Light Control's dial sets, 1 to {len(LIGHT_AREAS)}", "1"),
+    **{f"look{n}_{g}": (f"Lights {n} {LEVEL_NAMES[g]} level, saved by holding its key",
+                        str(lin if g == "linear" else level))
+       for n, lin, level in LOOKS for g in LIGHT_LEVELS},
     "lt_saved": ("Look just saved, shown on its key for two seconds", "0"),
     "dmx_cmd": ("The DMX channels and values last sent to the ODE", ""),
-    **{var: (f"{title.title()} fader in dB, kept in step with the Wing", "0") for _, _, var, title, _ in VOLUME_SOURCES},
-    **{f"z{z}_level": (f"{name} fader in dB, kept in step with the Wing", str(db)) for z, name, _, db, *_ in ZONES},
+    **{var: (f"{title.title()} fader in dB, kept in step with the Wing", str(SRC_NORMAL))
+       for _, _, var, title, _ in VOLUME_SOURCES},
+    **{f"z{z}_level": (f"{name} fader in dB, kept in step with the Wing", str(db)) for z, name, _, db, _ in ZONES},
     "mic_level": ("Mic bus fader in dB, kept in step with the Wing", str(MIC_START)),
     "mic_muted": ("1 while the mics are muted", "0"),
     "music_n": ("Number of the chosen playlist", "1"),
     "music_name": ("Name of the chosen playlist", "Morning"),
     **{f"z{z}_src": (f"{name} source, or Off", "Off") for z, name, *_ in ZONES},
+    "zone_pick": (f"The zone Audio Zones' dial and switch work on, 1 to {len(ZONES)}", "1"),
+    "audio_last": ("The source last played, which a zone turned on from silence plays", "Playlist"),
     "audio_power": ("1 while the audio system is on, 0 while the amplifiers are off", "0"),
     "turn_fast_ms": (f"Dial clicks closer together than this, in ms, move {TURN_FAST} steps each. 0 turns it off",
                      str(TURN_FAST_MS)),
@@ -901,81 +1092,91 @@ GLYPHS = {
                 '<circle cx="17" cy="5" r="2"/><path d="M17 8.5 14 16h6zM15.5 16v5M18.5 16v5"/>',
     "door": '<path d="M6 21V3h12v18M3 21h18M14.5 12v.01"/>',
     "lock": '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    "cup": '<path d="M4.5 9.5h11.5v4a5.5 5.5 0 0 1-5.5 5.5h-.5a5.5 5.5 0 0 1-5.5-5.5z"/>'
+           '<path d="M16 11h1.2a2.6 2.6 0 0 1 0 5.2H15.6M8.5 3.2c-.9 1.1.9 2.1 0 3.4M12 3.2c-.9 1.1.9 2.1 0 3.4'
+           'M3.5 21.5h14"/>',
+    "chandelier": '<path d="M12 2.5V7.5M4 9.5c0 3.5 3.5 5 8 5s8-1.5 8-5M8 9.5c0 2.2 1.8 3.2 4 3.2s4-1 4-3.2M12 7.5v10'
+                  'M4 9.5V8M8 9.5V8M16 9.5V8M20 9.5V8M10.8 19.4 12 21.5l1.2-2.1z"/>'
+                  '<path d="M4 4.6c-.9 1-.9 1.9 0 2.6.9-.7.9-1.6 0-2.6zM8 4.6c-.9 1-.9 1.9 0 2.6.9-.7.9-1.6 0-2.6zM16 4.6c-.9 1-.9 1.9 0 2.6.9-.7.9-1.6 0-2.6zM20 4.6c-.9 1-.9 1.9 0 2.6.9-.7.9-1.6 0-2.6z" fill="currentColor"/>',
+    "hall": '<path d="M5 21V10a7 7 0 0 1 14 0v11M9.5 21v-6a2.5 2.5 0 0 1 5 0v6M2.5 21h19"/>',
+    "sconce": '<rect x="3" y="6" width="3.2" height="12.5" rx="1.6"/><path d="M6.2 15.5c5 0 7.3-1.5 7.3-4.6'
+              'M10 10.9h7M13.5 10.9V7.4"/>'
+              '<path d="M13.5 3.2c-.9 1-.9 1.9 0 2.6.9-.7.9-1.6 0-2.6z" fill="currentColor"/>',
+    "flame": '<path d="M12 2.8c.6 3.2 5.2 5.3 5.2 10.4a5.2 5.2 0 0 1-10.4 0c0-2.4 1.2-3.8 2.1-5 .3 1.9 1.3 2.7 2 2.9'
+             '-.3-2.6-.2-5.2 1.1-8.3z"/><path d="M3.5 21.5h17"/>',
+    "lamppost": '<path d="M12 21.5V10.5M9 21.5h6M8.5 10.5h7M9.5 10.5l-1.2-5.5h7.4l-1.2 5.5M12 5V3"/>'
+                '<path d="M4.8 7.6h1.6M17.6 7.6h1.6M5.6 3.6l1.2 1M18.4 3.6l-1.2 1"/>',
+    "lobby": '<path d="M5 11V8.5A2.5 2.5 0 0 1 7.5 6h9A2.5 2.5 0 0 1 19 8.5V11"/>'
+             '<path d="M3 12.6a1.8 1.8 0 0 1 3.6 0V15h10.8v-2.4a1.8 1.8 0 0 1 3.6 0V18.5H3zM5 18.5v2M19 18.5v2"/>',
+    "entry": '<path d="M1.5 9.5h21L18 4.5H6z" fill="currentColor"/>'  # the overhang, with the covered space shaded
+             '<path d="M4.5 9.5h15V21h-15z" fill="currentColor" fill-opacity=".22" stroke="none"/>'
+             '<path d="M8.5 21v-8.5h7V21M12 12.5V21M1.5 21h21"/>',
+    "north": '<path d="M3.5 21V5.5h9.5V21M1.5 21h13.5M10.4 13v.01M19 20V4M16 7l3-3 3 3"/>',
+    "stage": '<g transform="rotate(32 12 12) translate(12 12) scale(1.16) translate(-12 -12)"><path d="M9.4 10.6C7.4 10.6 7 12.8 8.2 14.2 6 15 5.6 17.4 6.6 19.2C7.6 21 10 21.6 12 21.6s4.4-.6 5.4-2.4c1-1.8.6-4.2-1.6-5C17 12.8 16.6 10.6 14.6 10.6c-1 0-2 .4-2.6.4s-1.6-.4-2.6-.4z"/>'
+             '<path d="M12 11V3.2M10.6 19.2h2.8M10.8 2.2h2.4"/><circle cx="12" cy="16.4" r="1.6"/></g>',
+    "sources": '<circle cx="5" cy="5.5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="5" cy="18.5" r="2"/>'
+               '<path d="M7 5.5c4.5 0 4.5 6.5 9 6.5M7 18.5c4.5 0 4.5-6.5 9-6.5M7 12h9.5M16.5 8.5 20 12l-3.5 3.5"/>',
+    "waves": '<path d="M2.5 8.5c2.4-1.8 4.8-1.8 7.2 0s4.8 1.8 7.2 0 3.3-1.3 4.6-1M2.5 13c2.4-1.8 4.8-1.8 7.2 0'
+             's4.8 1.8 7.2 0 3.3-1.3 4.6-1M2.5 17.5c2.4-1.8 4.8-1.8 7.2 0s4.8 1.8 7.2 0 3.3-1.3 4.6-1"/>',
+    "headphones": '<path d="M3.5 15.5V12a8.5 8.5 0 0 1 17 0v3.5"/><rect x="2.5" y="14" width="4.5" height="7" rx="2"/>'
+                  '<rect x="17" y="14" width="4.5" height="7" rx="2"/>',
+    "bolt": '<path d="M13.5 2.5 5 13.5h6.5l-1 8 8.5-11h-6.5z"/>',
+    "plan": '<rect x="3" y="3.5" width="18" height="17" rx="2"/><path d="M12 3.5V10M3 12.5h5.5M12 14.5v6M15.5 12.5H21"/>',
     "check": '<circle cx="12" cy="12" r="9"/><path d="M7.5 12.5l3 3 6-6.5"/>',
 }
 
 SVG = 'xmlns="http://www.w3.org/2000/svg"'
 
 
-def tile_svg(icon, cat, state):
-    """A key's artwork: a lit or resting tile with a large icon. The label is live text drawn on top."""
-    glow = state in ("active", "saved", "on")
-    if state == "locked":
-        top, bottom, glyph = LOCKED_ART
-    elif state == "on":  # a lit power key, green whatever the key's own color
-        p = PALETTE["power"]
-        top, bottom, glyph = p[3], p[4], "#ffffff"
-    elif state == "saved":
-        p = PALETTE["save"]
-        top, bottom, glyph, icon = p[3], p[4], "#ffffff", "check"
-    elif state == "active":
-        p = PALETTE[cat]
-        top, bottom, glyph = p[3], p[4], "#ffffff"
-    else:
-        p = PALETTE[cat]
-        top, bottom, glyph = p[0], p[1], p[2]
-    parts = [
-        f'<svg {SVG} width="144" height="144" viewBox="0 0 144 144"><defs>',
-        f'<linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{top}"/>'
-        f'<stop offset="1" stop-color="{bottom}"/></linearGradient>',
-        '<radialGradient id="glow" cx=".5" cy=".3" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".38"/>'
-        '<stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>',
-        '<rect width="144" height="144" fill="url(#g)"/>',
-        '<ellipse cx="72" cy="42" rx="62" ry="44" fill="url(#glow)"/>' if glow else "",
-        f'<g transform="translate(36,5) scale(3)" color="{glyph}" {stroke(1.9)}>{GLYPHS[icon]}</g>',
-    ]
-    if state == "locked":
-        parts.append(f'<g transform="translate(106,5) scale(1.35)" color="#8a939e" {stroke(2.2)}>'
-                     f'{GLYPHS["lock"]}</g>')
-    parts.append("</svg>")
-    return "".join(parts)
-
-
-STRIP_ICONS = {"light": "bulb", "linear": "linear", "audio": "speaker", "mic": "mic"}
-
-
-def strip_svg(cat, icon):
-    color = accent(cat)
-    return (f'<svg {SVG} width="200" height="100" viewBox="0 0 200 100"><defs>'
-            f'<linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="{color}" stop-opacity=".22"/>'
-            f'<stop offset=".7" stop-color="{color}" stop-opacity="0"/></linearGradient></defs>'
-            '<rect width="200" height="100" fill="#0b0d10"/><rect width="200" height="100" fill="url(#g)"/>'
-            '<path d="M199.5 8v84" stroke="#fff" stroke-opacity=".08"/>'
-            f'<g transform="translate(9,10) scale(1.3)" color="{color}" {_S}>{GLYPHS[icon]}</g></svg>')
-
-
-# ---------------------------------------------------------------- Home scene
-# Home's eight keys share one picture, the sun cresting a ridge at dawn, cut into a piece per key. Over the lights
-# row the sky brightens from Lights Off, under the moon, to Lights 3, nearest the sun. The audio keys stand on the
-# ridges, with the sun about to clear the ridge behind More, and the touch strip below is a lake catching the
-# colors. A lit key glows in its own color over its piece of the picture, with a bright ring, so what is on still
-# reads at a glance.
-SCENE_PAGES = {1}
+# ---------------------------------------------------------------- pictures
+# Every page shows one picture across its eight keys, cut into a piece per key, and its touch strip is a lake
+# below, reflecting the sky. Home is dawn, the sun cresting a ridge: over the lights row the sky brightens from
+# Lights Off, under the moon, to Lights 3, nearest the sun. More, Playlists and the audio pages are dusk, with the
+# sun setting on the other side, and Light Control is night under the northern lights, so each part of the deck is
+# easy to tell apart. A key that is on glows in its own color over its piece of the picture, with a bright ring,
+# so what is on still reads at a glance. A picked key shows a white ring.
 KEY_PX = 144
 KEY_GAP = 48  # the bezel between two keys, in key pixels, so the picture lines up across it: 144 x gap / key width
 SCENE_W, SCENE_H = 4 * KEY_PX + 3 * KEY_GAP, 2 * KEY_PX + KEY_GAP
 LOW = KEY_PX + KEY_GAP  # top of the audio row
 STRIP_W, STRIP_H = 800, 100
 SUN_X, SUN_Y, SUN_R = 3 * LOW + 104, LOW + 46, 30
-SKY = [(0, "#0a1442"), (.2, "#172b80"), (.42, "#4234a6"), (.6, "#93399c"), (.76, "#dc4f72"), (.89, "#ff8650"),
-       (1, "#ffb65a")]
-# Ridge lines as (fraction across, pixels below the top of the audio row)
+MOON_X, MOON_Y = 24, 28
+# Ridge lines as (fraction across, pixels below the top of the bottom row)
 FAR_RIDGE = [(-.02, 40), (.06, 24), (.15, 9), (.25, 22), (.36, 5), (.47, 20), (.58, 30), (.7, 24), (.82, 32),
              (SUN_X / SCENE_W, 30), (1.02, 38)]
 MID_RIDGE = [(-.02, 72), (.08, 60), (.2, 78), (.32, 62), (.44, 76), (.56, 58), (.68, 72), (.8, 64), (.92, 80),
              (1.02, 70)]
 NEAR_RIDGE = [(-.02, 114), (.1, 102), (.24, 120), (.38, 106), (.52, 122), (.66, 104), (.8, 118), (.94, 108),
               (1.02, 114)]
+
+
+@dataclass(frozen=True)
+class Picture:
+    sky: tuple            # (offset, color) across the sky, left to right before any mirroring
+    far: tuple            # each ridge's top and bottom color
+    mid: tuple
+    near: tuple
+    rim: str              # the light catching the ridge tops
+    sun: bool = True      # a sun behind the ridge on the right, with its glow and rays. Without it, the moon lights it
+    mirror: bool = False  # flips the picture, so the sun sets on the left
+    aurora: bool = False  # the northern lights over the keys
+
+
+PICTURES = {
+    "dawn": Picture(sky=((0, "#0a1442"), (.2, "#172b80"), (.42, "#4234a6"), (.6, "#93399c"), (.76, "#dc4f72"),
+                         (.89, "#ff8650"), (1, "#ffb65a")),
+                    far=("#6d3f92", "#32286c"), mid=("#2c3c8e", "#1a2460"), near=("#132052", "#0a1030"),
+                    rim="#ffe0a0"),
+    "dusk": Picture(sky=((0, "#081c36"), (.22, "#123a66"), (.45, "#3d4592"), (.64, "#9a4a96"), (.8, "#ea6a78"),
+                         (.92, "#ff9c68"), (1, "#ffc477")),
+                    far=("#40508e", "#232c60"), mid=("#1d4a74", "#132f4c"), near=("#0d2436", "#07141f"),
+                    rim="#ffd6a0", mirror=True),
+    "night": Picture(sky=((0, "#16306a"), (.45, "#0b1a46"), (1, "#050b24")),
+                     far=("#1f2d62", "#121b40"), mid=("#122050", "#0a1332"), near=("#081028", "#040818"),
+                     rim="#b4ccff", sun=False, aurora=True),
+}
+PAGE_PICTURE = {1: "dawn", 2: "dusk", 3: "dusk", 4: "night", 5: "dusk", 6: "dusk"}
 
 
 def _smooth(ridge):
@@ -991,21 +1192,25 @@ def _stops(stops, darken=0.0):
     return "".join(f'<stop offset="{o}" stop-color="{mix(c, "#000000", darken)}"/>' for o, c in stops)
 
 
-def _stars():
-    """Stars that thin out toward the sunrise, the same every build."""
-    out, seed, reach = [], 11, SCENE_W * 0.6
+def _stars(pic):
+    """Stars, thinning out toward the sun, the same every build."""
+    out, seed = [], 11
+    reach = SCENE_W * (0.6 if pic.sun else 1.02)
 
     def rnd():
         nonlocal seed
         seed = (seed * 1103515245 + 12345) % 2 ** 31
         return seed / 2 ** 31
-    for _ in range(80):
+    for _ in range(80 if pic.sun else 110):
         x, y = rnd() * reach, rnd() * (LOW - 20)
-        fade = max(0.0, 1 - x / reach) ** 1.3
+        fade = max(0.0, 1 - x / reach) ** 1.3 if pic.sun else 0.75
         if fade > 0.05:
             out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{0.7 + rnd() * 1.1:.2f}" fill="#fff" '
                        f'fill-opacity="{fade * (0.45 + rnd() * 0.55):.2f}"/>')
-    for x, y, r in ((118, 24, 5), (22, 120, 4), (LOW + 26, 30, 4.5), (LOW + 120, 112, 3.5)):  # a few that twinkle
+    twinkles = [(118, 24, 5), (22, 120, 4), (LOW + 26, 30, 4.5), (LOW + 120, 112, 3.5)]
+    if not pic.sun:
+        twinkles += [(2 * LOW + 40, 22, 4.5), (2 * LOW + 118, 96, 3.5), (3 * LOW + 30, 64, 4), (3 * LOW + 124, 18, 5)]
+    for x, y, r in twinkles:
         out.append(f'<path d="M{x} {y - r}Q{x} {y} {x + r} {y}Q{x} {y} {x} {y + r}Q{x} {y} {x - r} {y}Q{x} {y} '
                    f'{x} {y - r}z" fill="#fff" fill-opacity=".9"/>')
     return "".join(out)
@@ -1023,61 +1228,95 @@ def _rays():
     return f'<path d="{"".join(out)}" fill="url(#rays)"/>'
 
 
-def scene_defs():
-    sun = f'gradientUnits="userSpaceOnUse" cx="{SUN_X}" cy="{SUN_Y}"'
+def _aurora():
+    bands = (f"M-20 96C{SCENE_W * .18:.0f} 40 {SCENE_W * .34:.0f} 128 {SCENE_W * .52:.0f} 70"
+             f"S{SCENE_W * .86:.0f} 30 {SCENE_W + 20} 84",
+             f"M-20 132C{SCENE_W * .2:.0f} 96 {SCENE_W * .4:.0f} 164 {SCENE_W * .6:.0f} 112"
+             f"S{SCENE_W * .9:.0f} 92 {SCENE_W + 20} 128")
+    return (f'<g filter="url(#aurblur)"><path d="{bands[0]}" fill="none" stroke="url(#aur)" stroke-width="34" '
+            f'stroke-opacity=".5"/><path d="{bands[1]}" fill="none" stroke="url(#aur)" stroke-width="18" '
+            f'stroke-opacity=".32"/></g>')
+
+
+def scene_defs(pic):
+    light = f'gradientUnits="userSpaceOnUse" cx="{SUN_X}" cy="{SUN_Y}"'
 
     def v(gid, y1, top, bottom):
         return (f'<linearGradient id="{gid}" gradientUnits="userSpaceOnUse" x1="0" y1="{y1}" x2="0" y2="{SCENE_H}">'
                 f'<stop offset="0" stop-color="{top}"/><stop offset="1" stop-color="{bottom}"/></linearGradient>')
-    return (
+    rim = ('<stop offset=".2" stop-color="{0}" stop-opacity="0"/><stop offset=".9" stop-color="{0}" '
+           'stop-opacity="1"/>' if pic.sun else
+           '<stop offset="0" stop-color="{0}" stop-opacity=".75"/><stop offset=".7" stop-color="{0}" '
+           'stop-opacity=".1"/>').format(pic.rim)
+    out = (
         f'<linearGradient id="sky" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="{SCENE_W}" y2="0">'
-        f'{_stops(SKY)}</linearGradient>'
+        f'{_stops(pic.sky)}</linearGradient>'
         f'<linearGradient id="night" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="{LOW}">'
         '<stop offset="0" stop-color="#050720" stop-opacity=".5"/>'
         '<stop offset="1" stop-color="#050720" stop-opacity="0"/></linearGradient>'
-        f'<radialGradient id="sunglow" {sun} r="{SCENE_W * 0.62:.0f}">'
-        '<stop offset="0" stop-color="#fff2c0"/><stop offset=".08" stop-color="#ffd27a" stop-opacity=".9"/>'
-        '<stop offset=".25" stop-color="#ff9a52" stop-opacity=".5"/><stop offset=".55" stop-color="#e2507a" '
-        'stop-opacity=".16"/><stop offset="1" stop-color="#e2507a" stop-opacity="0"/></radialGradient>'
-        f'<radialGradient id="rays" {sun} r="{SCENE_W}"><stop offset="0" stop-color="#fff4d6" stop-opacity=".3"/>'
-        '<stop offset=".7" stop-color="#fff4d6" stop-opacity=".06"/><stop offset="1" stop-color="#fff4d6" '
-        'stop-opacity="0"/></radialGradient>'
-        f'<radialGradient id="haze" {sun} r="{SCENE_W * 0.45:.0f}">'
-        '<stop offset="0" stop-color="#ffb070" stop-opacity=".6"/><stop offset=".5" stop-color="#e0607a" '
-        'stop-opacity=".18"/><stop offset="1" stop-color="#e0607a" stop-opacity="0"/></radialGradient>'
-        + v("far", LOW, "#6d3f92", "#32286c") + v("mid", LOW + 55, "#2c3c8e", "#1a2460")
-        + v("near", LOW + 100, "#132052", "#0a1030") +
-        f'<linearGradient id="rim" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="{SCENE_W}" y2="0">'
-        '<stop offset=".2" stop-color="#ffb06a" stop-opacity="0"/><stop offset=".9" stop-color="#ffe0a0" '
-        'stop-opacity="1"/></linearGradient>'
-        '<mask id="moon"><circle cx="24" cy="28" r="12" fill="#fff"/><circle cx="30" cy="23" r="10.5" fill="#000"/>'
-        '</mask>'
+        + v("far", LOW, *pic.far) + v("mid", LOW + 55, *pic.mid) + v("near", LOW + 100, *pic.near) +
+        f'<linearGradient id="rim" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="{SCENE_W}" y2="0">{rim}'
+        '</linearGradient>'
+        f'<mask id="moon"><circle cx="{MOON_X}" cy="{MOON_Y}" r="12" fill="#fff"/>'
+        f'<circle cx="{MOON_X + 6}" cy="{MOON_Y - 5}" r="10.5" fill="#000"/></mask>'
         '<filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>'
+        f'<radialGradient id="moonglow" gradientUnits="userSpaceOnUse" cx="{MOON_X}" cy="{MOON_Y}" r="260">'
+        '<stop offset="0" stop-color="#c9dcff" stop-opacity=".35"/><stop offset="1" stop-color="#c9dcff" '
+        'stop-opacity="0"/></radialGradient>'
     )
+    if pic.sun:
+        out += (
+            f'<radialGradient id="sunglow" {light} r="{SCENE_W * 0.62:.0f}">'
+            '<stop offset="0" stop-color="#fff2c0"/><stop offset=".08" stop-color="#ffd27a" stop-opacity=".9"/>'
+            '<stop offset=".25" stop-color="#ff9a52" stop-opacity=".5"/><stop offset=".55" stop-color="#e2507a" '
+            'stop-opacity=".16"/><stop offset="1" stop-color="#e2507a" stop-opacity="0"/></radialGradient>'
+            f'<radialGradient id="rays" {light} r="{SCENE_W}"><stop offset="0" stop-color="#fff4d6" '
+            'stop-opacity=".3"/><stop offset=".7" stop-color="#fff4d6" stop-opacity=".06"/><stop offset="1" '
+            'stop-color="#fff4d6" stop-opacity="0"/></radialGradient>'
+            f'<radialGradient id="haze" {light} r="{SCENE_W * 0.45:.0f}">'
+            '<stop offset="0" stop-color="#ffb070" stop-opacity=".6"/><stop offset=".5" stop-color="#e0607a" '
+            'stop-opacity=".18"/><stop offset="1" stop-color="#e0607a" stop-opacity="0"/></radialGradient>')
+    if pic.aurora:
+        out += (f'<linearGradient id="aur" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="{SCENE_W}" y2="0">'
+                '<stop offset="0" stop-color="#36e0b0"/><stop offset=".45" stop-color="#3fd6c2"/>'
+                '<stop offset=".75" stop-color="#7a7bff"/><stop offset="1" stop-color="#b56bff"/></linearGradient>'
+                '<filter id="aurblur" x="-20%" y="-80%" width="140%" height="260%">'
+                '<feGaussianBlur stdDeviation="9"/></filter>')
+    return out
 
 
-def scene_body():
+def scene_body(pic):
     def ridge(pts, fill):
         return f'<path d="{_smooth(pts)}V{SCENE_H + 10}H-10Z" fill="{fill}"/>'
     full = f'x="-10" y="-10" width="{SCENE_W + 20}" height="{SCENE_H + 20}"'
-    return (
-        f'<rect {full} fill="url(#sky)"/><rect {full} fill="url(#night)"/>' + _stars() +
-        '<circle cx="24" cy="28" r="20" fill="#f6eccb" fill-opacity=".16" filter="url(#soft)"/>'
-        '<circle cx="24" cy="28" r="12" fill="#f8efcf" mask="url(#moon)"/>'
-        f'<rect {full} fill="url(#sunglow)"/>' + _rays() +
-        f'<circle cx="{SUN_X}" cy="{SUN_Y}" r="{SUN_R + 12}" fill="#ffe2a0" fill-opacity=".5" filter="url(#soft)"/>'
-        f'<circle cx="{SUN_X}" cy="{SUN_Y}" r="{SUN_R}" fill="#fff6dc"/>'
-        + ridge(FAR_RIDGE, "url(#far)") +
-        f'<path d="{_smooth(FAR_RIDGE)}" fill="none" stroke="url(#rim)" stroke-width="3"/>'
-        f'<rect {full} fill="url(#haze)"/>'
-        + ridge(MID_RIDGE, "url(#mid)") +
-        f'<path d="{_smooth(MID_RIDGE)}" fill="none" stroke="url(#rim)" stroke-width="1.5" stroke-opacity=".5"/>'
-        + ridge(NEAR_RIDGE, "url(#near)")
-    )
+    moon_r = 12 if pic.sun else 13
+    body = f'<rect {full} fill="url(#sky)"/><rect {full} fill="url(#night)"/>'
+    if not pic.sun:
+        body += f'<rect {full} fill="url(#moonglow)"/>'
+    if pic.aurora:
+        body += _aurora()
+    body += (_stars(pic) +
+             f'<circle cx="{MOON_X}" cy="{MOON_Y}" r="20" fill="#f6eccb" fill-opacity=".16" filter="url(#soft)"/>'
+             f'<circle cx="{MOON_X}" cy="{MOON_Y}" r="{moon_r}" fill="#f8efcf" mask="url(#moon)"/>')
+    if pic.sun:
+        body += (f'<rect {full} fill="url(#sunglow)"/>' + _rays() +
+                 f'<circle cx="{SUN_X}" cy="{SUN_Y}" r="{SUN_R + 12}" fill="#ffe2a0" fill-opacity=".5" '
+                 'filter="url(#soft)"/>'
+                 f'<circle cx="{SUN_X}" cy="{SUN_Y}" r="{SUN_R}" fill="#fff6dc"/>')
+    body += (ridge(FAR_RIDGE, "url(#far)") +
+             f'<path d="{_smooth(FAR_RIDGE)}" fill="none" stroke="url(#rim)" stroke-width="3"/>' +
+             (f'<rect {full} fill="url(#haze)"/>' if pic.sun else "") +
+             ridge(MID_RIDGE, "url(#mid)") +
+             f'<path d="{_smooth(MID_RIDGE)}" fill="none" stroke="url(#rim)" stroke-width="1.5" stroke-opacity=".5"/>'
+             + ridge(NEAR_RIDGE, "url(#near)"))
+    if pic.mirror:
+        body = f'<g transform="translate({SCENE_W},0) scale(-1,1)">{body}</g>'
+    return body
 
 
-def scene_tile_svg(row, col, icon, cat, state):
-    """A Home key: its piece of the scene, a large icon, and when lit, a glow in its color and a bright ring."""
+def scene_tile_svg(picture, row, col, icon, cat, state):
+    """A key: its piece of the page's picture and a large icon. Lit, it glows in its color with a bright ring."""
+    pic = PICTURES[picture]
     x0, y0 = col * (KEY_PX + KEY_GAP), row * (KEY_PX + KEY_GAP)
     lit = state in ("active", "saved", "on")
     color = accent({"on": "power", "saved": "save"}.get(state, cat))
@@ -1087,7 +1326,7 @@ def scene_tile_svg(row, col, icon, cat, state):
     shade = {"locked": 0.62, "rest": 0.14}.get(state, 0)
     gray = ' filter="url(#gray)"' if state == "locked" else ""
     parts = [
-        f'<svg {SVG} width="{KEY_PX}" height="{KEY_PX}" viewBox="0 0 {KEY_PX} {KEY_PX}"><defs>{scene_defs()}',
+        f'<svg {SVG} width="{KEY_PX}" height="{KEY_PX}" viewBox="0 0 {KEY_PX} {KEY_PX}"><defs>{scene_defs(pic)}',
         f'<linearGradient id="wash" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{color}" '
         f'stop-opacity=".42"/><stop offset=".5" stop-color="{color}" stop-opacity=".7"/><stop offset="1" '
         f'stop-color="{mix(color, "#000000", 0.45)}" stop-opacity=".92"/></linearGradient>',
@@ -1097,18 +1336,19 @@ def scene_tile_svg(row, col, icon, cat, state):
         '<stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>',
         '<filter id="gray"><feColorMatrix type="saturate" values=".12"/></filter>',
         '<filter id="lift" x="-40%" y="-40%" width="180%" height="180%">'
-        + (f'<feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#fff" flood-opacity=".6"/>' if lit else "")
+        + ('<feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#fff" flood-opacity=".6"/>' if lit else "")
         + '<feDropShadow dx="0" dy="2.5" stdDeviation="2.5" flood-color="#000" flood-opacity=".75"/></filter>',
         '<filter id="ringglow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="4"/>'
         '</filter></defs>',
-        f'<g transform="translate({-x0},{-y0})"{gray}>' + scene_body() + '</g>',
+        f'<g transform="translate({-x0},{-y0})"{gray}>' + scene_body(pic) + '</g>',
     ]
     if shade:
         parts.append(f'<rect width="{KEY_PX}" height="{KEY_PX}" fill="#03040c" fill-opacity="{shade}"/>')
     if lit:
         parts += [f'<rect width="{KEY_PX}" height="{KEY_PX}" fill="url(#wash)"/>',
                   '<ellipse cx="72" cy="42" rx="62" ry="44" fill="url(#glow)"/>']
-    parts.append(f'<rect width="{KEY_PX}" height="{KEY_PX}" fill="url(#scrim)"/>')
+    if icon:
+        parts.append(f'<rect width="{KEY_PX}" height="{KEY_PX}" fill="url(#scrim)"/>')
     if lit:
         ring = mix(color, "#ffffff", 0.45)
         parts += [f'<rect x="4" y="4" width="136" height="136" rx="17" fill="none" stroke="{color}" '
@@ -1117,8 +1357,9 @@ def scene_tile_svg(row, col, icon, cat, state):
     else:
         parts.append('<rect x="1" y="1" width="142" height="142" rx="18" fill="none" stroke="#fff" '
                      'stroke-opacity=".14" stroke-width="2"/>')
-    parts.append(f'<g filter="url(#lift)"><g transform="translate(36,5) scale(3)" color="{glyph}" {stroke(1.9)}>'
-                 f'{GLYPHS[icon]}</g></g>')
+    if icon:
+        parts.append(f'<g filter="url(#lift)"><g transform="translate(36,5) scale(3)" color="{glyph}" '
+                     f'{stroke(1.9)}>{GLYPHS[icon]}</g></g>')
     if state == "locked":
         parts.append(f'<g transform="translate(106,5) scale(1.35)" color="#8a939e" {stroke(2.2)}>'
                      f'{GLYPHS["lock"]}</g>')
@@ -1126,54 +1367,70 @@ def scene_tile_svg(row, col, icon, cat, state):
     return "".join(parts)
 
 
-def scene_strip_svg(col, cat, icon):
-    """A Home touch strip panel: its piece of the lake, reflecting the sky, with the panel's icon."""
+# A picked key's white ring, drawn over its artwork while the dial is pointed at it
+PICK_RING = (f'<svg {SVG} width="{KEY_PX}" height="{KEY_PX}" viewBox="0 0 {KEY_PX} {KEY_PX}">'
+             '<rect x="5" y="5" width="134" height="134" rx="17" fill="none" stroke="#000" stroke-opacity=".5" '
+             'stroke-width="11"/>'
+             '<rect x="5" y="5" width="134" height="134" rx="17" fill="none" stroke="#fff" stroke-width="6"/>'
+             '<path d="M58 5h28l-14 11z" fill="#fff"/></svg>')
+
+
+def scene_strip_svg(picture, col, cat, icon):
+    """A touch strip panel: its piece of the lake, reflecting the page's sky, with the panel's icon."""
+    pic = PICTURES[picture]
     color = accent(cat)
     x0 = col * (STRIP_W // 4)
-    sun_x = SUN_X / SCENE_W * STRIP_W
+    light_x = (SUN_X if pic.sun else MOON_X) / SCENE_W * STRIP_W
+    glow = ('<stop offset="0" stop-color="#ffa860" stop-opacity=".45"/><stop offset=".5" stop-color="#d0507a" '
+            'stop-opacity=".12"/><stop offset="1" stop-color="#d0507a" stop-opacity="0"/>' if pic.sun else
+            '<stop offset="0" stop-color="#c9dcff" stop-opacity=".22"/><stop offset="1" stop-color="#c9dcff" '
+            'stop-opacity="0"/>')
+    lake = (f'<rect width="{STRIP_W}" height="{STRIP_H}" fill="url(#sky)"/>'
+            f'<rect width="{STRIP_W}" height="{STRIP_H}" fill="url(#r)"/>')
+    if pic.mirror:
+        lake = f'<g transform="translate({STRIP_W},0) scale(-1,1)">{lake}</g>'
     return (f'<svg {SVG} width="200" height="100" viewBox="0 0 200 100"><defs>'
             f'<linearGradient id="sky" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="{STRIP_W}" y2="0">'
-            f'{_stops(SKY, 0.62)}</linearGradient>'
+            f'{_stops(pic.sky, 0.62)}</linearGradient>'
             '<linearGradient id="deep" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#03040c" '
             'stop-opacity=".1"/><stop offset="1" stop-color="#03040c" stop-opacity=".7"/></linearGradient>'
-            f'<radialGradient id="r" gradientUnits="userSpaceOnUse" cx="{sun_x:.0f}" cy="0" r="220" '
-            'gradientTransform="matrix(1 0 0 .5 0 0)">'
-            '<stop offset="0" stop-color="#ffa860" stop-opacity=".45"/><stop offset=".5" stop-color="#d0507a" '
-            'stop-opacity=".12"/><stop offset="1" stop-color="#d0507a" stop-opacity="0"/></radialGradient>'
+            f'<radialGradient id="r" gradientUnits="userSpaceOnUse" cx="{light_x:.0f}" cy="0" r="220" '
+            f'gradientTransform="matrix(1 0 0 .5 0 0)">{glow}</radialGradient>'
             f'<linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="{color}" '
             f'stop-opacity=".22"/><stop offset=".7" stop-color="{color}" stop-opacity="0"/></linearGradient></defs>'
-            f'<g transform="translate({-x0},0)"><rect width="{STRIP_W}" height="{STRIP_H}" fill="url(#sky)"/>'
-            f'<rect width="{STRIP_W}" height="{STRIP_H}" fill="url(#r)"/>'
+            f'<g transform="translate({-x0},0)">{lake}'
             f'<rect width="{STRIP_W}" height="{STRIP_H}" fill="url(#deep)"/></g>'
             '<rect width="200" height="100" fill="url(#g)"/>'
             '<path d="M199.5 8v84" stroke="#fff" stroke-opacity=".1"/>'
             f'<g transform="translate(9,10) scale(1.3)" color="{color}" {_S}>{GLYPHS[icon]}</g></svg>')
 
 
+STRIP_ART = {  # what a touch strip panel shows: its color, and its icon
+    "light": ("light", "bulb"), "linear": ("linear", "linear"), "audio": ("audio", "speaker"), "mic": ("mic", "mic"),
+    "area": ("light", "sliders"), "bluetooth": ("audio", "bluetooth"), "zone": ("audio", "plan"),
+}
+
+
 def tile_name(k, state):
-    if k.page in SCENE_PAGES:
-        return f"{PAGES[k.page][0].lower()}-{k.icon}-{state}"
-    return f"tile-{k.cat}-{k.icon}-{state}"
+    return f"{PAGE_PICTURE[k.page]}-r{k.row}c{k.col}-{k.icon or 'blank'}-{state}"
 
 
 def strip_name(k):
-    return f"{PAGES[k.page][0].lower()}-strip-{k.cat}" if k.page in SCENE_PAGES else f"strip-{k.cat}"
+    return f"{PAGE_PICTURE[k.page]}-strip{k.col}-{k.cat}"
 
 
 def art_key(k):
     """The artwork names a key needs, with their SVG source and size."""
     out = {}
-    if k.kind == "key":
-        states = ["rest"] + [s for _, s in k.fb]
-        for s in states:
-            svg = (scene_tile_svg(k.row, k.col, k.icon, k.cat, s) if k.page in SCENE_PAGES
-                   else tile_svg(k.icon, k.cat, s))
-            out[tile_name(k, s)] = (svg, KEY_PX, KEY_PX)
+    if k.kind in ("key", "blank"):
+        for s in ["rest"] + [st for _, st in k.fb]:
+            out[tile_name(k, s)] = (scene_tile_svg(PAGE_PICTURE[k.page], k.row, k.col, k.icon, k.cat, s),
+                                    KEY_PX, KEY_PX)
     elif k.kind == "strip":
-        icon = STRIP_ICONS.get(k.cat) or k.cat.split("-", 1)[1]
-        cat = k.cat if k.cat in PALETTE else "audio"
-        svg = scene_strip_svg(k.col, cat, icon) if k.page in SCENE_PAGES else strip_svg(cat, icon)
-        out[strip_name(k)] = (svg, 200, 100)
+        cat, icon = STRIP_ART[k.cat]
+        out[strip_name(k)] = (scene_strip_svg(PAGE_PICTURE[k.page], k.col, cat, icon), 200, 100)
+    if k.pick:
+        out["pick-ring"] = (PICK_RING, KEY_PX, KEY_PX)
     return out
 
 
@@ -1255,8 +1512,8 @@ def el_box(eid, name, x, y, w, h, color, radius=0, enabled=True, opacity=100):
     return e
 
 
-def el_image(eid, name, x, y, w, h, data, fill="fill"):
-    e = el_base(eid, name, "image", x, y, w, h)
+def el_image(eid, name, x, y, w, h, data, fill="fill", enabled=True):
+    e = el_base(eid, name, "image", x, y, w, h, enabled)
     e["pinnedProperties"] = ["base64Image", "halign", "valign"]
     e.update(base64Image=P(data), halign=val("center"), valign=val("center"), fillMode=val(fill))
     return e
@@ -1314,7 +1571,7 @@ def layers_for(k, images):
         s = k.show
         title = expr(s["title"]) if s.get("title_expr") else s["title"]
         pct = s["pct"]
-        title_color = accent(k.cat if k.cat in PALETTE else "audio")
+        title_color = accent(STRIP_ART[k.cat][0])
         if s.get("dim"):  # a panel that greys out while its dial does nothing
             title_color = expr(f"{s['dim']} ? '{DIM}' : '{title_color}'")
         panel = el_image("art", "Panel", 0, 0, 100, 100, img(images, strip_name(k)))
@@ -1337,15 +1594,27 @@ def layers_for(k, images):
             layers.append(el_text("badge", "No Wing", 70, 6, 27, 26, "NO WING", 70, BADGE, halign="right", bold=True,
                                   enabled=expr(s["badge"])))
         return layers, []
-    # A normal key: tile artwork with a live label
-    rest = img(images, tile_name(k, "rest"))
+    # A normal key: its piece of the picture with a live label, and for keys a dial picks, a ring and a level bar
     layers = [
         el_canvas("border"),
         el_box("bg", "Background", 0, 0, 100, 100, PALETTE[k.cat][1]),
-        el_image("art", "Artwork", 0, 0, 100, 100, rest),
-        el_text("label", "Label", 3, 63, 94, 34, k.label, label_size(k.label), TEXT_REST, bold=True,
-                outline=LABEL_OUTLINE),
+        el_image("art", "Artwork", 0, 0, 100, 100, img(images, tile_name(k, "rest"))),
     ]
+    if k.kind == "blank":
+        return layers, []
+    if k.pick:
+        layers.append(el_image("pick", "Picked", 0, 0, 100, 100, img(images, "pick-ring"), enabled=expr(k.pick)))
+    if k.bar:
+        pct = k.bar["pct"]
+        layers += [el_box("track", "Track", 15, 88, 70, 5, TRACK, radius=100),
+                   el_box("fill", "Level", 15, 88, expr(around(pct, "70 * {} / 100")), 5, expr(k.bar["color"]),
+                          radius=100, enabled=expr(around(pct, "{} > 0")))]
+    if k.sub:
+        layers.append(el_text("sub", "Picked", 3, 51, 94, 17, expr(k.sub), 82, TEXT_REST, bold=True,
+                              outline=LABEL_OUTLINE))
+    box = (3, 58, 94, 29) if k.bar else (3, 67, 94, 30) if k.sub else (3, 63, 94, 34)
+    layers.append(el_text("label", "Label", *box, k.label, label_size(k.label), TEXT_REST, bold=True,
+                          outline=LABEL_OUTLINE))
     feedbacks = []
     for expression, state in k.fb:
         overrides = [("art", "base64Image", img(images, tile_name(k, state))),
@@ -1908,7 +2177,8 @@ class Sim:
         self.wing = {f"mtx{mx}_level": float(db) for _, _, mx, db, *_ in ZONES} if connected else {}
         if connected:
             self.wing.update({f"bus{MIC_BUS}_level": float(MIC_START), f"bus{MIC_BUS}_mute": 0})
-            self.wing.update({f"{sel.strip('/').replace('/', '')}_level": 0.0 for _, sel, *_ in VOLUME_SOURCES})
+            self.wing.update({f"{sel.strip('/').replace('/', '')}_level": float(SRC_NORMAL)
+                              for _, sel, *_ in VOLUME_SOURCES})
         self.sends, self.mutes, self.log, self.page = {}, {}, [], 1
         self.dmx = [0] * 512
         self.kept = {}
@@ -2025,32 +2295,55 @@ def tests():
     def ok(name, condition):
         checks.append((name, bool(condition)))
 
+    N = float(SRC_NORMAL)  # a source fader at normal
+    to_top = SRC_MAX - SRC_NORMAL + 3  # slow clicks enough to reach the top from normal
+
+    def lit(st, loc):
+        return any(truthy(st.eval(x)) for x, state in KEYS[loc].fb if state == "active")
+
+    def label_of(st, loc):
+        """The label and art state a key shows now. Like Companion, a later feedback wins over an earlier one."""
+        k, shown = KEYS[loc], (KEYS[loc].label, "rest")
+        for x, state in k.fb:
+            if truthy(st.eval(x)):
+                shown = (k.labels.get(state, shown[0]), state)
+        return shown
+
+    def picked(st, loc):
+        return truthy(st.eval(KEYS[loc].pick))
+
+    def areas(st):
+        return [st.channel(n) for n, *_ in LIGHT_AREAS]
+
+    def hears(st):
+        return [st.hears(z) for z, *_ in ZONES]
+
     # Every room scene reaches the Wing exactly as the table says, from any starting scene
     for first in SCENES:
         for name, _, _, zones in SCENES:
             s = Sim()
             s.press(SCENE_LOC[first[0]])
             s.press(SCENE_LOC[name])
-            ok(f"{first[0]} then {name}", [s.hears(z) for z in range(1, 6)] == zones)
-    # Every zone and source works, and leaves the other zones alone
+            ok(f"{first[0]} then {name}", hears(s) == zones)
+    # Every zone block plays its source and leaves the other zones alone
     for z, name, *_ in ZONES:
         for s_index, (source, *_rest) in enumerate(SOURCES):
             s = Sim()
             s.press(SCENE_LOC["Auditorium"])
-            before = [s.hears(i) for i in range(1, 6)]
-            s.press(f"{ZONES[z - 1][4]}/0/{s_index}")
+            before = hears(s)
+            s.press(zone_block(z, s_index))
             before[z - 1] = source
-            ok(f"{name} on {source}", [s.hears(i) for i in range(1, 6)] == before)
+            ok(f"{name} on {source}", hears(s) == before)
     # Lights: looks, off and the dials
-    for n, lin, fix in LOOKS:
+    for n, lin, level in LOOKS:
         s = Sim()
         s.press(f"1/0/{n}")
-        ok(f"Lights {n} plays", s.channel(0) == dmx_of(100, lin) and s.channel(1) == dmx_of(100, fix)
-           and s.vars["lt_look"] == str(n))
+        ok(f"Lights {n} plays, every area at its level", s.channel(0) == dmx_of(100, lin)
+           and areas(s) == [dmx_of(100, level)] * len(LIGHT_AREAS) and s.vars["lt_look"] == str(n))
     s = Sim()
     s.press("1/0/2")
     s.press("1/0/0")
-    ok("Lights Off goes dark and keeps the look", s.channel(0) == 0 and s.channel(1) == 0 and s.vars["lt_look"] == "2")
+    ok("Lights Off goes dark and keeps the look", s.channel(0) == 0 and not any(areas(s)) and s.vars["lt_look"] == "2")
     s.turn("1/3/0", "right")
     ok("All Lights brings the look back from off", s.channel(0) == dmx_of(LIGHT_STEP, 65))
     s.run(KEYS["1/3/0"].down)
@@ -2062,12 +2355,13 @@ def tests():
     ok("All Lights stops at 100%", s.vars["lt_all"] == 100)
     for _ in range(30):
         s.turn("1/3/0", "left")
-    ok("All Lights stops at 0%", s.vars["lt_all"] == 0 and s.channel(1) == 0)
+    ok("All Lights stops at 0%", s.vars["lt_all"] == 0 and not any(areas(s)))
     s = Sim()
     s.press("1/0/3")
     s.turn("1/3/1", "left")
     s.turn("1/3/1", "left")
-    ok("Linear moves only the linear lights", s.channel(0) == dmx_of(100, 90) and s.channel(1) == dmx_of(100, 100))
+    ok("Linear moves only the linear lights", s.channel(0) == dmx_of(100, 90)
+       and areas(s) == [dmx_of(100, 100)] * len(LIGHT_AREAS))
     s.run(KEYS["1/3/1"].down)
     ok("pushing Linear restores the look", s.channel(0) == dmx_of(100, 100))
     s.turn("1/3/0", "left")
@@ -2092,13 +2386,14 @@ def tests():
     ok(f"one report moves at most {TURN_MAX} steps", s.vars["lt_all"] == 50 - LIGHT_STEP * TURN_MAX)
     s = Sim()
     s.press(SCENE_LOC["Music Inside"])
+    s.wing["bus15_level"] = float(SRC_MAX - 5)
     for _ in range(3):
         s.turn("1/3/2", "right", gap=20)
-    ok("a fast Volume turn stops exactly at 6 dB over normal", s.wing["bus15_level"] == float(SRC_MAX)
+    ok(f"a fast Volume turn stops exactly at {SRC_MAX} dB", s.wing["bus15_level"] == float(SRC_MAX)
        and s.vars["music_level"] == SRC_MAX)
-    s.turn("4/3/2", "left", gap=20)
-    s.turn("4/3/2", "left", gap=20)
-    ok("zone dials speed up too", s.wing["mtx1_level"] == -6.0 - 1 - TURN_FAST and s.vars["z1_level"] == -11)
+    s.turn("6/3/2", "left", gap=20)
+    s.turn("6/3/2", "left", gap=20)
+    ok("the Zone dial speeds up too", s.wing["mtx1_level"] == -6.0 - 1 - TURN_FAST and s.vars["z1_level"] == -11)
     s.turn("1/3/3", "left", gap=20)
     s.turn("1/3/3", "left", gap=20)
     ok("the Mics dial speeds up too", s.wing[f"bus{MIC_BUS}_level"] == MIC_START - 1 - TURN_FAST)
@@ -2106,7 +2401,7 @@ def tests():
     s.press(SCENE_LOC["Music Inside"])
     s.turn("1/3/2", "left", gap=20)
     s.turn("1/3/2", "left", gap=20)
-    ok("speed works with no Wing", s.vars["music_level"] == -1 - TURN_FAST)
+    ok("speed works with no Wing", s.vars["music_level"] == N - 1 - TURN_FAST)
     s = Sim()
     s.vars.update(turn_fast_ms="0", turn_medium_ms="0")
     s.press("1/0/2")
@@ -2123,11 +2418,12 @@ def tests():
     before = (s.channel(0), s.channel(1))
     s.press("1/0/1", held=True)
     ok("holding Lights 1 saves the lights as they are", s.vars["look1_linear"] == round(80 * 80 / 100)
-       and s.vars["look1_fix"] == round(65 * 80 / 100) and s.vars["lt_look"] == "1")
+       and all(s.vars[f"look1_{slug(name)}"] == round(65 * 80 / 100) for _, name, *_ in LIGHT_AREAS)
+       and s.vars["lt_look"] == "1")
     ok("saving doesn't change the lights", abs(s.channel(0) - before[0]) <= 1 and abs(s.channel(1) - before[1]) <= 1)
     ok("saving shows Saved, then clears", s.vars["lt_saved"] == "0")
     ok("saving writes the look to its startup value, so exports keep it",
-       s.kept == {"look1_linear": s.vars["look1_linear"], "look1_fix": s.vars["look1_fix"]})
+       s.kept == {f"look1_{g}": s.vars[f"look1_{g}"] for g in LIGHT_LEVELS})
     s.press("1/0/3")
     s.press("1/0/1")
     ok("Lights 1 plays what was saved", abs(s.channel(0) - before[0]) <= 1 and abs(s.channel(1) - before[1]) <= 1)
@@ -2135,16 +2431,32 @@ def tests():
     s.press("1/0/0")
     s.press("1/0/2", held=True)
     ok("saving while off does nothing", s.vars["look2_linear"] == "65")
-    # Stations: the rack and every door share the same pages and start on Home
+    # Stations and pages
     groups = surface_groups()
     ok("every station starts on Home with every page", all(
         g["startup_page"] == 1 and g["allowed_pages"] == DECK_PAGES for g in groups.values()) and len(groups) == 4)
     ok("pages are numbered from 1 with no gaps", DECK_PAGES == list(range(1, len(DECK_PAGES) + 1)))
+    ok("every page fills its 8 keys, 4 strip panels and 4 dials, so its picture stays whole",
+       all(f"{p}/{r}/{c}" in KEYS for p in DECK_PAGES for r in range(4) for c in range(4)))
+    ok("every page has a picture", all(p in PAGE_PICTURE for p in DECK_PAGES))
+    ok("every playlist has a key", [KEYS[f"3/{r}/{c}"].label for r in range(2) for c in range(4)][:len(PLAYLISTS)]
+       == [name for _, name, _ in PLAYLISTS])
+    s = Sim()
+    s.press("3/1/2")
+    ok("the seventh playlist plays its own preset", ("wiim", "MCUKeyShortClick:7") in s.log and lit(s, "3/1/2"))
+    for loc, page in (("1/1/3", 2), ("2/0/0", 4), ("2/0/1", 5), ("2/0/2", 6), ("2/0/3", 3), ("2/1/3", 1), ("3/1/3", 1),
+                      ("5/1/2", 2), ("6/1/2", 2), ("4/1/3", 1)):
+        s = Sim()
+        s.press(loc)
+        ok(f"{loc} {name_of(loc)} opens {PAGES[page][0]}", s.page == page)
+    ok("More's dials match Home's", [KEYS[f"2/3/{c}"].label for c in range(4)] == [KEYS[f"1/3/{c}"].label
+                                                                                  for c in range(4)])
     # iPad Mode
     s = Sim()
     s.press("1/0/3")
-    s.press("2/1/2", held=True)
-    ok("iPad Mode fades Companion's output out", s.vars["light_mode"] == "ipad" and s.channel(0) == 0 and s.channel(1) == 0)
+    s.press(IPAD_KEY, held=True)
+    ok("iPad Mode fades Companion's output out", s.vars["light_mode"] == "ipad" and s.channel(0) == 0
+       and not any(areas(s)))
     for loc in ("1/0/1", "1/0/0", "1/0/2"):
         s.press(loc)
     s.turn("1/3/0", "right")
@@ -2152,13 +2464,57 @@ def tests():
     s.press("1/0/1", held=True)
     ok("lights are locked in iPad Mode", s.channel(0) == 0 and s.vars["lt_look"] == "3" and s.vars["look1_linear"] == "35")
     ok("the strip shows iPad", s.show("1/2/0", "value") == "iPad")
-    s.press("2/1/2", held=True)
+    s.press(IPAD_KEY, held=True)
     ok("leaving iPad Mode restores the look", s.vars["light_mode"] == "deck" and s.channel(0) == 255)
     s = Sim()
     s.press("1/0/0")
-    s.press("2/1/2", held=True)
-    s.press("2/1/2", held=True)
+    s.press(IPAD_KEY, held=True)
+    s.press(IPAD_KEY, held=True)
     ok("leaving after Lights Off stays dark", s.channel(0) == 0)
+    # Light Control: tap an area to pick it, then turn the Area dial
+    s = Sim()
+    s.press("1/0/2")
+    s.press("4/0/1")
+    ok("tapping an area picks it", picked(s, "4/0/1") and not picked(s, "4/0/0")
+       and s.show("4/2/2", "title") == "CHANDELIERS")
+    s.turn("4/3/2", "right")
+    s.turn("4/3/2", "right")
+    ok("the Area dial moves only the picked area", s.channel(2) == dmx_of(100, 75) and s.channel(1) == dmx_of(100, 65)
+       and s.channel(0) == dmx_of(100, 65) and s.show("4/2/2", "value") == "75%")
+    s.run(KEYS["4/3/2"].down)
+    ok("pushing the Area dial puts the area back to the look", s.channel(2) == dmx_of(100, 65))
+    for _ in range(20):
+        s.turn("4/3/2", "left")
+    ok("an area turned down to 0 goes dark, unlit, with an empty bar", s.channel(2) == 0 and not lit(s, "4/0/1")
+       and lit(s, "4/0/0") and s.eval(KEYS["4/0/1"].bar["pct"]) == 0)
+    s.turn("1/3/0", "left")
+    ok("All Lights still scales every area", s.channel(1) == dmx_of(95, 65))
+    s = Sim()
+    s.press("1/0/2")
+    s.press("1/0/0")
+    s.press("4/1/1")
+    s.turn("4/3/2", "left")
+    ok("turning an area down with the lights off does nothing", s.vars["lt_fireplace"] == "65" and not any(areas(s)))
+    s.turn("4/3/2", "right")
+    ok("turning an area up with the lights off brings it on by itself", s.vars["lt_all"] == "100"
+       and s.channel(6) == dmx_of(100, LIGHT_STEP) and s.channel(0) == 0
+       and areas(s).count(0) == len(LIGHT_AREAS) - 1 and lit(s, "4/1/1") and not lit(s, "4/0/0"))
+    s = Sim()
+    s.press("1/0/2")
+    s.press("4/0/0")
+    for _ in range(3):
+        s.turn("4/3/2", "right")
+    s.press("1/0/3", held=True)
+    s.press("1/0/1")
+    s.press("1/0/3")
+    ok("a saved look keeps each area's own level", s.channel(1) == dmx_of(100, 80) and s.channel(2) == dmx_of(100, 65))
+    s = Sim()
+    s.press("1/0/2")
+    s.press(IPAD_KEY, held=True)
+    s.turn("4/3/2", "right")
+    ok("in iPad Mode the areas lock and the Area dial does nothing", s.vars["lt_cafe"] == "65"
+       and label_of(s, "4/0/0")[1] == "locked" and s.show("4/2/2", "value") == "iPad"
+       and label_of(s, "2/0/0")[1] == "locked")
     # Music starts once, stops when unused, and survives zone changes
     start = ("wiim", "MCUKeyShortClick:1")
     s = Sim()
@@ -2185,59 +2541,132 @@ def tests():
     s.log.clear()
     s.press("3/0/2")
     ok("playlist key while playing swaps it", ("wiim", "MCUKeyShortClick:3") in s.log and s.vars["music_n"] == "3")
+    # Audio Zones: tap a zone to pick it, then switch it or turn the Zone dial
+    s = Sim()
+    ok("Lobby starts picked, and its switch is red and says Turn On", picked(s, "6/0/0") and not picked(s, "6/0/1")
+       and label_of(s, "6/1/1") == ("Turn On", "active") and s.eval(KEYS["6/1/1"].sub) == "Lobby")
+    s.press("6/0/1")
+    s.press("6/1/1")
+    ok("switching a zone on from silence turns the system on and plays the last source",
+       s.vars["audio_power"] == "1" and hears(s) == ["Off", "Playlist", "Off", "Off", "Off"]
+       and s.log.count(start) == 1 and label_of(s, "6/0/1")[1] == "on" and label_of(s, "6/0/0")[1] == "active")
+    ok("the switch turns green, says Turn Off, and names the picked zone",
+       label_of(s, "6/1/1") == ("Turn Off", "on") and s.eval(KEYS["6/1/1"].sub) == "Main Entry")
+    s.press("1/1/1")
+    s.press("6/1/1")
+    ok("a zone switched on plays what the other zones are playing",
+       hears(s) == ["Auditorium", "Auditorium", "Off", "Auditorium", "Auditorium"])
+    s.press("6/1/1")
+    ok("switching it again turns just that zone off", hears(s) == SCENES[0][3] and s.vars["audio_power"] == "1")
+    s = Sim()
+    s.press("5/0/2")
+    s.press("5/0/2")
+    s.press("6/0/2")
+    s.press("6/1/1")
+    ok("with nothing playing, a zone plays the source played last", s.hears(3) == "Bluetooth"
+       and hears(s).count("Off") == 4)
     s = Sim()
     s.press(SCENE_LOC["Music Inside"])
     s.log.clear()
-    s.press("4/0/0")
-    ok("music keeps going while another zone uses it", ("wiim", "setPlayerCmd:stop") not in s.log)
+    for loc in ("6/0/0", "6/0/3"):
+        s.press(loc)
+        s.press("6/1/1")
+    ok("music keeps going while another zone uses it", ("wiim", "setPlayerCmd:stop") not in s.log
+       and s.hears(5) == "Playlist")
+    s.press("6/1/0")
+    s.press("6/1/1")
+    ok("switching off the last music zone stops the player and leaves the system on",
+       ("wiim", "setPlayerCmd:stop") in s.log and hears(s) == ["Off"] * 5 and s.vars["audio_power"] == "1")
+    s = Sim()
+    s.press(SCENE_LOC["Music Inside"])
+    s.press("6/0/3")
+    s.turn("6/3/2", "right")
+    s.turn("6/3/2", "right")
+    ok("the Zone dial moves only the picked zone", s.wing["mtx4_level"] == -10.0 and s.wing["mtx1_level"] == -6.0
+       and s.vars["z4_level"] == -10.0)
+    ok("the zone strip shows the picked zone, its source and level",
+       s.show("6/2/2", "title") == "BATHROOMS · Playlist" and s.show("6/2/2", "value") == "-10 dB")
+    s.run(KEYS["6/3/2"].down)
+    ok("pushing the Zone dial puts it back to normal", s.wing["mtx4_level"] == -12.0)
+    # Audio Source: the sources, lit while they play, and Bluetooth's own dial
+    for loc, source in (("5/0/0", "Auditorium"), ("5/0/1", "Playlist"), ("5/0/2", "Bluetooth"),
+                        ("5/0/3", "Lobby Stage")):
+        s = Sim()
+        s.press(loc)
+        on = (s.vars["audio_power"] == "1" and s.hears(1) == source and lit(s, loc)
+              and sum(lit(s, f"5/0/{c}") for c in range(4)) == 1)
+        s.press(loc)
+        ok(f"Audio Source {source} lights while it plays, and toggles", on and s.hears(1) == "Off"
+           and not lit(s, loc))
+    s = Sim()
+    s.turn("5/3/2", "right")
+    ok("the Bluetooth dial does nothing while the audio is off", s.wing["bus16_level"] == N
+       and s.show("5/2/2", "value") == "Off")
+    s.press("1/1/0")
+    s.turn("5/3/2", "right")
+    s.turn("5/3/2", "right")
+    ok("the Bluetooth dial sets its level even when it isn't playing", s.wing["bus16_level"] == N + 2
+       and s.vars["bt_level"] == N + 2 and s.show("5/2/2", "value") == "+2 dB")
+    s.press("5/0/2")
+    ok("Bluetooth plays at the level its dial set", s.hears(1) == "Bluetooth" and s.wing["bus16_level"] == N + 2)
+    s.press(SCENE_LOC["Auditorium"])
+    ok("room buttons keep the Bluetooth level", s.wing["bus16_level"] == N + 2 and s.wing["bus15_level"] == N)
+    s.run(KEYS["5/3/2"].down)
+    ok("pushing the Bluetooth dial puts it back to normal", s.wing["bus16_level"] == N
+       and s.show("5/2/2", "value") == "Normal")
+    for _ in range(to_top):
+        s.turn("5/3/2", "right")
+    ok(f"the Bluetooth dial stops at {SRC_MAX} dB, {SRC_MAX - SRC_NORMAL} dB over normal", s.wing["bus16_level"] == float(SRC_MAX))
     # Volume follows whatever is playing, with the Wing connected
     s = Sim()
     s.turn("1/3/2", "right")
-    ok("Volume does nothing with every zone off", s.wing["bus15_level"] == 0.0 and s.show("1/2/2", "value") == "Off"
+    ok("Volume does nothing with every zone off", s.wing["bus15_level"] == N and s.show("1/2/2", "value") == "Off"
        and s.show("1/2/2", "title") == "VOLUME")
     s.press(SCENE_LOC["Music Inside"])
     s.turn("1/3/2", "right")
-    ok("Volume moves the music while music plays", s.wing["bus15_level"] == 1.0 and s.wing["bus14_level"] == 0.0
+    ok("Volume moves the music while music plays", s.wing["bus15_level"] == N + 1 and s.wing["bus14_level"] == N
        and s.wing["mtx1_level"] == -6.0 and s.show("1/2/2", "value") == "+1 dB" and s.show("1/2/2", "title") == "MUSIC")
     s.press(SCENE_LOC["Auditorium"])
-    ok("a room button puts the music back to normal", s.wing["bus15_level"] == 0.0
+    ok("a room button puts the music back to normal", s.wing["bus15_level"] == N
        and s.show("1/2/2", "title") == "AUDITORIUM" and s.show("1/2/2", "value") == "Normal")
     s.turn("1/3/2", "left")
     s.turn("1/3/2", "left")
-    ok("Volume moves the auditorium feed while it plays", s.wing["bus14_level"] == -2.0
-       and s.wing["bus15_level"] == 0.0 and s.show("1/2/2", "value") == "-2 dB")
+    ok("Volume moves the auditorium feed while it plays", s.wing["bus14_level"] == N - 2
+       and s.wing["bus15_level"] == N and s.show("1/2/2", "value") == "-2 dB")
     s.run(KEYS["1/3/2"].down)
-    ok("pushing Volume puts it back to normal", s.wing["bus14_level"] == 0.0 and s.show("1/2/2", "value") == "Normal")
-    for _ in range(10):
+    ok("pushing Volume puts it back to normal", s.wing["bus14_level"] == N and s.show("1/2/2", "value") == "Normal")
+    for _ in range(to_top):
         s.turn("1/3/2", "right")
-    ok("Volume stops at 6 dB over normal", s.wing["bus14_level"] == float(SRC_MAX))
+    ok(f"Volume stops at {SRC_MAX} dB, {SRC_MAX - SRC_NORMAL} dB over normal", s.wing["bus14_level"] == float(SRC_MAX))
     s.wing["bus14_level"] = -60.0
     s.turn("1/3/2", "left")
     ok("Volume stops at -60 dB", s.wing["bus14_level"] == -60.0)
-    s.press(SCENE_LOC["Lobby Event"])
+    s.press(SCENE_LOC["Lobby Stage"])
     s.wing["main1_level"] = -3.0
     s.turn("1/3/2", "right")
-    ok("in a Lobby Event, Volume moves Main 1", s.wing["main1_level"] == -2.0 and s.show("1/2/2", "title") == "LOBBY MIX")
-    s.press(SCENE_LOC["Lobby Event"])
+    ok("with the Lobby Stage playing, Volume moves Main 1", s.wing["main1_level"] == -2.0
+       and s.show("1/2/2", "title") == "LOBBY STAGE")
+    s.press(SCENE_LOC["Lobby Stage"])
     ok("room buttons leave Main 1 to the band's mixer", s.wing["main1_level"] == -2.0)
     s = Sim()
-    s.press("4/0/1")
-    s.press("5/0/0")
+    s.press(POWER_ON)
+    s.press(zone_block(1, 1))
+    s.press(zone_block(2, 0))
     s.turn("1/3/2", "right")
-    ok("with mixed zones, Volume follows the first zone that is on", s.wing["bus15_level"] == 1.0
-       and s.wing["bus14_level"] == 0.0)
+    ok("with mixed zones, Volume follows the first zone that is on", s.wing["bus15_level"] == N + 1
+       and s.wing["bus14_level"] == N)
     # Zone and mic dials, with the audio system on and nothing playing
     s = Sim()
     s.press("1/1/0")
-    s.turn("4/3/2", "right")
-    s.turn("4/3/2", "right")
-    ok("zone dial moves only its zone", s.wing["mtx1_level"] == -4.0 and s.wing["mtx2_level"] == -10.0
+    s.turn("6/3/2", "right")
+    s.turn("6/3/2", "right")
+    ok("the Zone dial moves only its zone", s.wing["mtx1_level"] == -4.0 and s.wing["mtx2_level"] == -10.0
        and s.vars["z1_level"] == -4.0)
-    s.run(KEYS["4/3/2"].down)
-    ok("pushing the zone dial restores it", s.wing["mtx1_level"] == -6.0)
+    s.run(KEYS["6/3/2"].down)
+    ok("pushing the Zone dial restores it", s.wing["mtx1_level"] == -6.0)
     s.wing["mtx1_level"] = "-oo"
-    s.turn("4/3/2", "right")
-    ok("a zone dial lifts a zone from -oo", s.wing["mtx1_level"] == -89.0)
+    s.turn("6/3/2", "right")
+    ok("the Zone dial lifts a zone from -oo", s.wing["mtx1_level"] == -89.0)
     s = Sim()
     s.press("1/1/0")
     s.wing[f"bus{MIC_BUS}_level"] = 0.0
@@ -2252,8 +2681,8 @@ def tests():
     ok("no badge while the Wing reports", s.eval(KEYS["1/2/2"].show["badge"]) is False)
     s = Sim()
     s.press(SCENE_LOC["Music Inside"])
-    ok("zone strip shows source and level", s.show("4/2/2", "title") == "MAINS · Playlist"
-       and s.show("4/2/2", "value") == "-6 dB" and s.show("4/2/2", "pct") == 90)
+    ok("the zone strip shows source and level", s.show("6/2/2", "title") == "LOBBY · Playlist"
+       and s.show("6/2/2", "value") == "-6 dB" and s.show("6/2/2", "pct") == 90)
     s.press("1/0/2")
     s.turn("1/3/0", "left")
     ok("lights strip shows the level", s.show("1/2/0", "value") == "95%")
@@ -2263,24 +2692,25 @@ def tests():
     s.press(SCENE_LOC["Music Inside"])
     s.turn("1/3/2", "right")
     s.turn("1/3/2", "right")
-    ok("Volume moves with no Wing", s.show("1/2/2", "value") == "+2 dB" and s.vars["music_level"] == 2.0)
+    ok("Volume moves with no Wing", s.show("1/2/2", "value") == "+2 dB" and s.vars["music_level"] == N + 2)
     s.run(KEYS["1/3/2"].down)
     ok("pushing Volume resets with no Wing", s.show("1/2/2", "value") == "Normal")
     s.turn("1/3/3", "left")
     ok("Mics move with no Wing", s.show("1/2/3", "value") == f"{MIC_START - 1} dB")
     s.run(KEYS["1/3/3"].down)
     ok("Mics mute with no Wing", s.show("1/2/3", "value") == "Muted")
-    s.turn("4/3/2", "left")
-    s.press(SCENE_LOC["Music Inside"])
-    ok("zone dial with no Wing", s.show("4/2/2", "value") == "-6 dB")
-    # Close Up and triggers
+    s.turn("6/3/2", "left")
+    ok("the Zone dial moves with no Wing", s.show("6/2/2", "value") == "-7 dB")
+    s.turn("5/3/2", "right")
+    ok("the Bluetooth dial moves with no Wing", s.show("5/2/2", "value") == "+1 dB")
+    # Close Up, which only the night schedule runs now, and triggers
     s = Sim()
     s.press("1/0/3")
-    s.press(SCENE_LOC["Lobby Event"])
-    s.press("2/1/2", held=True)
-    s.press("2/1/1", held=True)
+    s.press(SCENE_LOC["Lobby Stage"])
+    s.press(IPAD_KEY, held=True)
+    s.press(CLOSE_UP)
     ok("Close Up turns everything off and leaves iPad Mode", s.vars["light_mode"] == "deck" and s.channel(0) == 0
-       and [s.hears(z) for z in range(1, 6)] == ["Off"] * 5)
+       and hears(s) == ["Off"] * 5)
     ok("Close Up turns the audio system off", s.vars["audio_power"] == "0" and s.log[-1] == ("power", "off"))
     s = Sim()
     s.vars.update(lt_all="70", lt_linear="50")
@@ -2302,23 +2732,14 @@ def tests():
     s.run(TRIGGERS["schedule_night"]["control"]["actions"])
     ok("night schedule turns the audio system off", s.vars["audio_power"] == "0" and s.log[-1] == ("power", "off"))
     # Audio power, and the source keys that toggle
-    lit = lambda st, loc: any(truthy(st.eval(x)) for x, state in KEYS[loc].fb if state == "active")  # noqa: E731
-
-    def label_of(st, loc):
-        """The label and art state a key shows now. Like Companion, a later feedback wins over an earlier one."""
-        k, shown = KEYS[loc], (KEYS[loc].label, "rest")
-        for x, state in k.fb:
-            if truthy(st.eval(x)):
-                shown = (k.labels.get(state, shown[0]), state)
-        return shown
     s = Sim()
     ok("the system starts off, with the power key red and saying Turn Audio On", s.vars["audio_power"] == "0"
        and lit(s, "1/1/0") and label_of(s, "1/1/0") == ("Turn Audio On", "active"))
     s.turn("1/3/3", "right")
     s.run(KEYS["1/3/3"].down)
-    s.turn("4/3/2", "right")
-    s.run(KEYS["4/3/2"].down)
-    ok("while off, the Mics and zone dials do nothing", s.wing[f"bus{MIC_BUS}_level"] == MIC_START
+    s.turn("6/3/2", "right")
+    s.run(KEYS["6/3/2"].down)
+    ok("while off, the Mics and Zone dials do nothing", s.wing[f"bus{MIC_BUS}_level"] == MIC_START
        and s.wing[f"bus{MIC_BUS}_mute"] == 0 and s.wing["mtx1_level"] == -6.0 and not s.log)
     ok("while off, the Volume and Mics panels say Off and grey out", s.show("1/2/2", "value") == "Off"
        and s.show("1/2/3", "value") == "Off" and s.show("1/2/3", "pct") == 0 and s.eval(KEYS["1/2/3"].show["dim"])
@@ -2338,12 +2759,12 @@ def tests():
     s.log.clear()
     s.press("1/1/1")
     ok("Auditorium pressed again turns it off and leaves the system on", s.vars["audio_power"] == "1"
-       and [s.hears(z) for z in range(1, 6)] == ["Off"] * 5 and not lit(s, "1/1/1") and not lit(s, "1/1/0")
+       and hears(s) == ["Off"] * 5 and not lit(s, "1/1/1") and not lit(s, "1/1/0")
        and ("power", "off") not in s.log)
     s.press("1/1/1")
     s.press("1/1/2")
     ok("Music while Auditorium plays swaps them", lit(s, "1/1/2") and not lit(s, "1/1/1")
-       and [s.hears(z) for z in range(1, 6)] == SCENES[1][3])
+       and hears(s) == SCENES[1][3])
     s.press("1/1/1")
     ok("Auditorium while Music plays swaps them back, and stops the player", lit(s, "1/1/1") and not lit(s, "1/1/2")
        and ("wiim", "setPlayerCmd:stop") in s.log)
@@ -2351,11 +2772,12 @@ def tests():
     s.press("1/1/0")
     ok("Turn Audio Off turns every zone off, then the amplifiers", s.vars["audio_power"] == "0"
        and label_of(s, "1/1/0") == ("Turn Audio On", "active")
-       and [s.hears(z) for z in range(1, 6)] == ["Off"] * 5 and s.log[-1] == ("power", "off")
+       and hears(s) == ["Off"] * 5 and s.log[-1] == ("power", "off")
        and not lit(s, "1/1/1"))
     s = Sim()
     s.press("1/1/1")
-    s.press("5/0/1")
+    s.press(MUSIC_START)
+    s.press(zone_block(2, 1))
     s.log.clear()
     s.press("1/1/1")
     ok("Auditorium off leaves another zone's music playing", s.hears(2) == "Playlist" and s.hears(1) == "Off"
@@ -2364,15 +2786,6 @@ def tests():
     s.press("1/1/2")
     ok("Music from off turns the system on, and the power key turns green", s.vars["audio_power"] == "1"
        and label_of(s, "1/1/0") == ("Turn Audio Off", "on") and s.hears(1) == "Playlist")
-    for loc, source in (("2/0/0", "Bluetooth"), ("2/0/1", "Lobby Mix")):
-        s = Sim()
-        s.press(loc)
-        on = s.vars["audio_power"] == "1" and s.hears(1) == source and lit(s, loc)
-        s.press(loc)
-        ok(f"{source} toggles like Auditorium", on and s.hears(1) == "Off" and not lit(s, loc))
-    s = Sim()
-    s.press("6/0/2")
-    ok("a zone page source key turns the system on", s.vars["audio_power"] == "1" and s.hears(3) == "Bluetooth")
     s = Sim()
     s.press("3/0/3")
     ok("a playlist key turns the system on", s.vars["audio_power"] == "1" and s.hears(1) == "Playlist")
@@ -2380,8 +2793,10 @@ def tests():
     states = [Sim(), Sim(), Sim(), Sim(connected=False), Sim()]
     states[1].press("1/0/2")
     states[1].press(SCENE_LOC["Music Everywhere"])
+    states[1].press("4/1/2")
+    states[1].press("6/1/0")
     states[2].press("1/1/0")
-    states[2].press("2/1/2", held=True)
+    states[2].press(IPAD_KEY, held=True)
     states[2].wing.update({"mtx1_level": "-oo", f"bus{MIC_BUS}_mute": 1})
     states[4].press("1/1/1")
     bad = []
@@ -2412,7 +2827,14 @@ def name_of(loc):
 
 CONDITIONS = {DECK: "the deck has the lights, not the iPad", NONE_PLAYLIST: "no zone is on Playlist",
               LIGHTS_ON: "the lights are on", f"{DECK} && {LIGHTS_ON}": "the deck has the lights and they are on",
-              POWERED: "the audio system is on",
+              POWERED: "the audio system is on", f"!({LIGHTS_ON})": "the lights are off",
+              **{f"{AREA_PICK} == {n}": f"{name} is picked" for n, name, *_ in LIGHT_AREAS},
+              **{f"{ZONE_PICK} == {z}": f"{name} is picked" for z, name, *_ in ZONES},
+              **{f"{ZONE_PICK} == {z} && {POWERED}": f"{name} is picked and the audio system is on"
+                 for z, name, *_ in ZONES},
+              **{f"$(custom:z{z}_src) != 'Off'": f"{name} is playing" for z, name, *_ in ZONES},
+              **{plays_next(source): f"the other zones play {source}, or nothing plays and {source} played last"
+                 for source, *_ in SOURCES},
               **{plays(source): f"any zone is on {source}" for source, *_ in SOURCES},
               **{f"$(custom:z{z}_src) == '{source}'": f"{name} is on {source}"
                  for z, name, *_ in ZONES for source, *_ in SOURCES}}
@@ -2486,9 +2908,11 @@ def behind(key):
 
 def shows(key):
     if key.kind == "strip":
-        return f"{key.show['title'] if not key.show.get('title_expr') else 'Zone and source'} (live)"
+        return f"{key.show.get('doc') or key.show['title']} (live)"
     if key.kind == "dial":
         return f"Dial: {key.label}"
+    if key.kind == "blank":
+        return "Blank, showing its piece of the picture"
     return plain(key.label)
 
 
@@ -2523,7 +2947,7 @@ def write_doc(count, checks):
     a("Real keys don't talk to hardware directly. Each one runs a block on a Library page, so a change happens in one place.\n")
     a("| Target | Connection | Message | Example |\n| --- | --- | --- | --- |\n"
       f"| Wing Rack | `wing`, {WING_IP} | Wing OSC through the Behringer module | `/bus/14/send/MX1/on` = 1 |\n"
-      f"| ODE Mk3 | `dmx`, {ODE_IP}, Art-Net universe {ARTNET_UNIVERSE} | Channel values through the Art-Net module | `1-8,166;9-32,166;` |\n"
+      f"| ODE Mk3 | `dmx`, {ODE_IP}, Art-Net universe {ARTNET_UNIVERSE} | Channel values through the Art-Net module | `1-8,166;9-12,166;13-16,166;` and so on |\n"
       f"| WiiM | `wiim`, https://{WIIM_IP}/ | HTTPS GET to `httpapi.asp?command=` | `MCUKeyShortClick:1` |\n"
       f"| Amplifier power | `power`, http://{POWER_IP}/ | HTTP GET to a Shelly Pro 1 relay, wired to the Furman "
       "sequencer's remote terminals | `rpc/Switch.Set?id=0&on=true` |\n")
@@ -2531,42 +2955,68 @@ def write_doc(count, checks):
     a("On the Stream Deck +, rows 0 and 1 are the keys, row 2 is the touch strip, and row 3 is the dials.\n")
     a("## How it looks\n")
     a("Amber is lighting, warm white is the linear lights, blue is audio, violet is music, teal is the mics, purple "
-      "is the iPad and red is off. A lit key, bright with a white icon, is the active choice. In iPad Mode, "
-      "lighting keys go grey and show a lock. A green key with a check mark has just saved a look. While the audio "
-      "system is off, the audio power key is red and says Turn Audio On, and the audio panels on the touch strip go "
-      "grey. While it is on, that key is green and says Turn Audio Off.\n")
-    a("Home's eight keys share one picture, the sun cresting a ridge at dawn, cut into a piece per key. The sky over "
-      "the lights row brightens from Lights Off, under the moon, to Lights 3, by the sun. The audio keys stand on the "
-      "ridges, and the touch strip below is a lake reflecting the sky. A Home key that is on glows in its own color "
-      "over its piece of the picture, with a bright ring around it. The picture allows for the bezel between keys "
-      f"({KEY_GAP} pixels, against a {KEY_PX}-pixel key), so it lines up across them. If it looks off on a real deck, "
-      "measure a key and the gap between two keys and set `KEY_GAP` in build.py to 144 times the gap divided by the key.\n")
+      "is the iPad, green is on and red is off. A lit key glows in its color with a bright ring and a white icon: it "
+      "is the active choice. On Home, the Lights key playing is green and Lights Off is red while the lights are "
+      "off, so with the audio power key below, a glance shows whether the lights and the audio are on. A white ring "
+      "marks the key a dial is pointed at, on Light Control and Audio Zones, and those "
+      "keys show their level along the bottom. In iPad Mode, lighting keys go grey and show a lock. A green key with "
+      "a check mark has just saved a look. While the audio system is off, the audio power key is red and says Turn "
+      "Audio On, and the audio panels on the touch strip go grey. While it is on, that key is green and says Turn "
+      "Audio Off. On Audio Zones, each zone key is green while it plays and red while it's off, and the switch "
+      "works like the power key for the picked zone.\n")
+    a("Each page shows one picture across its eight keys, cut into a piece per key, and its touch strip is a lake "
+      "reflecting the sky. Home is dawn, the sun cresting a ridge: over the lights row the sky brightens from Lights "
+      "Off, under the moon, to Lights 3, nearest the sun. More, Playlists, Audio Source and Audio Zones are dusk, "
+      "with the sun setting on the other side, and Light Control is night under the northern lights, so each part "
+      "of the deck is easy to tell apart. Blank keys still show their piece. The picture allows for the bezel "
+      f"between keys ({KEY_GAP} pixels, against a {KEY_PX}-pixel key), so it lines up across them. If it looks off "
+      "on a real deck, measure a key and the gap between two keys and set `KEY_GAP` in build.py to 144 times the "
+      "gap divided by the key.\n")
     a("The touch strip shows a live panel above each dial: what the dial does, its value, and a level bar that moves "
       "as you turn it.\n")
     a("Labels are live text, so you can rename a key in Companion without touching its artwork. The artwork is in "
       "[config/stream-deck/icons](../config/stream-deck/icons): 144-pixel keys, drawn larger than the Stream Deck +'s "
       "120-pixel keys so they stay sharp, and 200 by 100 touch strip panels, the size of each strip segment.\n")
     a(f"Inside Companion the same {len(LIBRARY)} images live in the image library, stored once, and keys refer to "
-      "them by name, such as `$(image:home_level2_active)`. Replacing an image there changes every key that "
+      "them by name, such as `$(image:dawn_r0c2_level2_active)`. Replacing an image there changes every key that "
       "uses it.\n")
     a("## Pages\n")
     a("Every station is a Stream Deck + with 8 keys, a touch strip and 4 dials, and they all share these pages. "
       "The rack and each door have their own surface group, which sets the pages that station may use. Every group "
       "starts on Home with every page, so to lock a door out of something, untick its page in that door's group.\n")
-    a("The first two dials and the last one do the same thing on every page, so hands learn them. The third dial is "
-      "the volume of whatever the page is about.\n")
+    a("The first two dials and the last one do the same thing on every page, so hands learn them. The third dial "
+      "follows the page: Volume on Home, More and Playlists, the picked area on Light Control, Bluetooth on Audio "
+      "Source, and the picked zone on Audio Zones.\n")
     a("![Stream Deck pages](images/stream-deck-pages.png)\n")
-    for n in (1, 2, 3):
+    notes = {
+        2: "More is the jumping-off point to the pages below it. Its dials match Home's.",
+        3: f"{len(PLAYLISTS)} playlists and Home. Each playlist key plays its WiiM preset of the same number and is "
+           "lit while it plays. In a silent room it starts music inside, the way Music on Home does. For music "
+           "outside too, switch the entries on in Audio Zones. The Music Everywhere block stays in the Library for "
+           "schedules, with no key.",
+        4: "Tap an area to pick it, then turn the Area dial. Each key is lit while its area is on, with its level "
+           "along the bottom. The levels belong to the looks: Lights 1, 2 and 3 set every area, and holding one of "
+           "them saves every area as it is. With the lights off, turning an area up brings it on by itself, which "
+           "suits a single light at night.",
+        5: "Each source is lit while it plays anywhere, and they toggle like the ones on Home. The Bluetooth dial sets "
+           "Bluetooth's level whether or not it is playing, and room buttons leave that level alone.",
+        6: "Each zone is green while it plays and red while it's off. Tap a zone to pick it. The switch beside "
+           "Vestibule then turns that zone on or off, and the Zone dial sets its volume. A zone switched on plays what the other zones are playing, or the source played last if "
+           "nothing is, and turns the audio system on if it's off.",
+    }
+    for n in DECK_PAGES:
         a(f"### Page {n}: {PAGES[n][0]}\n")
+        if n in notes:
+            a(notes[n] + "\n")
+        if n == 6:
+            a("| Zone | Speakers | Matrix | Variables | Normal fader |\n| --- | --- | --- | --- | --- |")
+            where = {"Lobby": "The lobby's main pair", "Main Entry": "The courtyard pair",
+                     "North Entry": "70V, under the soffit", "Bathrooms": "Bathroom speakers",
+                     "Vestibule": "Vestibule speakers"}
+            for z, name, mx, db, _ in ZONES:
+                a(f"| {name} | {where[name]} | MX{mx} | `z{z}_src`, `z{z}_level` | {db} dB |")
+            a("")
         a(page_table(n) + "\n")
-    first, last = ZONES[0][4], ZONES[-1][4]
-    a(f"### Pages {first} to {last}: Zones\n")
-    a(f"All five zone pages match. Page {first} is shown here. The others use their own matrix and variable.\n")
-    a("| Page | Zone | Matrix | Variable | Normal fader |\n| --- | --- | --- | --- | --- |")
-    for z, name, mx, db, page, _ in ZONES:
-        a(f"| {page} | {name} | MX{mx} | `z{z}_src`, `z{z}_level` | {db} dB |")
-    a("")
-    a(page_table(first) + "\n")
     a("## Audio power\n")
     a("A Furman sequencer powers the amplifiers. Companion switches it through a network relay, a Shelly Pro 1, "
       "whose contact is wired to the Furman's remote terminals. Closing the contact sequences the amplifiers on, "
@@ -2578,15 +3028,14 @@ def write_doc(count, checks):
     a("| Key | While the audio is off | While it's on |\n| --- | --- | --- |\n"
       "| Audio power key | Red, saying Turn Audio On. Press to turn the system on, with nothing playing | Green, "
       "saying Turn Audio Off. Press to turn every zone off, stop the music, then turn the amplifiers off |\n"
-      "| Auditorium, Music, Bluetooth, Lobby Event | Press to turn the system on and play that source | Lit while "
+      "| Auditorium, Music, Bluetooth, Lobby Stage | Press to turn the system on and play that source | Lit while "
       "its source plays anywhere. Press a lit key to turn its source off, leaving the system on. Press another to "
       "swap to it |\n"
-      "| Everywhere, Inside, a playlist, a zone's source | Press to turn the system on and play | Plays, as before |\n"
-      "| Volume and Mics dials, zone dials | Do nothing. Their panels say Off and go grey | Work as usual |\n"
-      "| Close Up, and the night schedule | Stay off | Turn the lights and the audio system off |\n")
-    a("Only Auditorium, Music, Bluetooth and Lobby Event toggle. Everywhere, Inside and the playlist keys choose "
-      "where and what plays, so pressing them again keeps playing. On a zone page, the zone's Off key turns that "
-      "zone off.\n")
+      "| A playlist, the zone switch | Press to turn the system on and play | Plays, as before |\n"
+      "| Volume, Mics, Bluetooth and Zone dials | Do nothing. Their panels say Off and go grey | Work as usual |\n"
+      "| The night schedule | Stays off | Turns the lights and the audio system off |\n")
+    a("Only Auditorium, Music, Bluetooth and Lobby Stage toggle. A playlist key chooses what plays, so pressing it "
+      "again keeps playing. On Audio Zones, the switch turns the picked zone off, and the system stays on.\n")
     a("Five seconds after Companion starts, the startup trigger sends the relay the state in `audio_power`, so the "
       "two always agree. To use a different power switch, such as Furman's own BB-RS232 adapter, change only "
       "those two blocks and that trigger.\n")
@@ -2603,9 +3052,10 @@ def write_doc(count, checks):
       "on the Variables page. Set both to 0 for one step a click.\n")
     a("## Lighting math\n")
     a("Companion keeps the lights as levels, and one block turns them into DMX. `lt_all` is the All Lights dial. "
-      "`lt_linear` and `lt_fix` are the levels of the linear lights and of every other fixture. A Lights key sets "
-      "`lt_all` to 100 and copies that look's two saved levels in. Lights Off sets `lt_all` to 0 and keeps the rest, "
-      "which is why turning All Lights brings the same look back.\n")
+      "`lt_linear` is the linear lights, and each area on Light Control has its own level: "
+      + ", ".join(f"`lt_{slug(name)}`" for _, name, *_ in LIGHT_AREAS) + ". A Lights key sets `lt_all` to 100 and "
+      "copies that look's saved levels in. Lights Off sets `lt_all` to 0 and keeps the rest, which is why turning "
+      "All Lights brings the same look back.\n")
     a("Every channel's value is its full value, times `lt_all`, times its group's level. In iPad Mode every value is 0, "
       "so the iPad's levels are the only ones the ODE sees. This is the expression in `22/1/0` Compute DMX:\n")
     a("```\n" + compute_expr() + "\n```\n")
@@ -2623,6 +3073,10 @@ def write_doc(count, checks):
     a(library_table(21) + "\n")
     a("### Page 22: Lights and dials\n")
     a(library_table(22) + "\n")
+    a("### Page 23: Light areas\n")
+    a(library_table(23) + "\n")
+    a("### Page 24: Zone switches and Bluetooth\n")
+    a(library_table(24) + "\n")
     a("## Triggers\n")
     a("| Trigger | Starts | Does |\n| --- | --- | --- |")
     for t_ in TRIGGERS.values():
@@ -2639,7 +3093,7 @@ def write_doc(count, checks):
     a(f"- **Change how fast the dials speed up.** On the Variables page, set `turn_fast_ms` and `turn_medium_ms`. "
       f"Clicks closer together than those many milliseconds move {TURN_FAST} or {TURN_MEDIUM} steps instead of 1. "
       f"Raise them to speed up sooner, or set both to 0 for one step a click.\n")
-    a(f"- **Change a look.** At any station, set the lights with the two light dials, then hold Lights 1, 2 or 3 for "
+    a(f"- **Change a look.** At any station, set the lights with the light dials and Light Control, then hold Lights 1, 2 or 3 for "
       f"{SAVE_HOLD_MS // 1000} seconds. The key turns green and says Saved. Every station and schedule uses the new look at once.\n"
       "- **Rename a playlist.** Change the label on page 3 and the name in its Library block.\n"
       "- **Use SharePoint playlists.** Edit one block, `21/0/6` Music Play. Change its first WiiM command to "
@@ -2647,6 +3101,8 @@ def write_doc(count, checks):
       "- **Change a room scene.** Edit its block on row 2 of page 21. Every station and schedule key follows.\n"
       "- **Change a normal level.** Edit `21/0/5`.\n"
       "- **Change the patch.** Edit `22/1/0`, as described in Lighting math.\n"
+      "- **Rename an area or a zone.** Change the key's label. Its strip title lives in the third dial's panel on "
+      "that page.\n"
       "- **Add a station.** Add the surface in Companion, give it its own surface group starting on page 1, and untick "
       "the pages it shouldn't use. Nothing in the pages changes.\n"
       f"- **Use a different power switch.** Edit `{POWER_ON}` Power On, `{POWER_OFF}` Power Off and the startup "
@@ -2722,14 +3178,18 @@ def preview(ctrl, sim, w, h):
 def sample_state(ipad=False):
     s = Sim()
     s.press("1/0/2")
-    s.turn("1/3/0", "left")
-    s.turn("1/3/0", "left")
-    s.turn("1/3/0", "left")
-    s.turn("1/3/0", "left")
+    for _ in range(4):
+        s.turn("1/3/0", "left")
+    s.press("4/1/1")  # the Fireplace turned off
+    for _ in range(14):
+        s.turn("4/3/2", "left")
+    s.press("4/0/1")  # Chandeliers picked and turned up
+    s.turn("4/3/2", "right")
+    s.turn("4/3/2", "right")
     s.press(SCENE_LOC["Music Inside"])
     s.wing[f"bus{MIC_BUS}_level"] = -8.0
     if ipad:
-        s.press("2/1/2", held=True)
+        s.press(IPAD_KEY, held=True)
     return s
 
 
@@ -2800,12 +3260,14 @@ def main():
         live, ipad, off = sample_state(), sample_state(ipad=True), sample_state()
         off.press("1/1/0")
         for cards, name, width, height, title, note in (
-                ([(1, "Page 1: Home", live), (2, "Page 2: More", live), (3, "Page 3: Playlists", live),
-                  (4, "Page 4: Zone Mains", live), (1, "Home in iPad Mode", ipad), (1, "Home with the audio off", off)],
-                 "stream-deck-pages", 1720, 1110, "Stream Deck + pages, shared by every station",
+                ([(n, f"Page {n}: {PAGES[n][0]}", live) for n in DECK_PAGES]
+                 + [(1, "Home in iPad Mode", ipad), (1, "Home with the audio off", off),
+                    (4, "Light Control in iPad Mode", ipad)],
+                 "stream-deck-pages", 1720, 1640, "Stream Deck + pages, shared by every station",
                  "The touch strip shows each dial's value live. Shown with Lights 2 at 80%, music playing inside, "
-                 "and the mics at -8 dB. The last two cards show the lights locked in iPad Mode, and the audio "
-                 "system off, with the power key red and saying Turn Audio On, and the Volume and Mics dials greyed out."),):
+                 "the mics at -8 dB, the Fireplace turned off, Chandeliers picked and turned up, and Lobby picked "
+                 "on Audio Zones. The last three cards show the lights locked in iPad Mode, and the audio system "
+                 "off, with the power key red and saying Turn Audio On, and the audio dials greyed out."),):
             page = layout(cards, tmp / name, width, title, note)
             target = IMAGES / f"{name}.png"
             chrome(profile, f"--screenshot={target}", f"--window-size={width + 56},{height}",
