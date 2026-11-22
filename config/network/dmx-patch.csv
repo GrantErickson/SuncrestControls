@@ -1,0 +1,22 @@
+ID,Controller,Output,Start channel,Channels,End channel,Dimming,Light,Area,Location,Make and model,Fixtures,Load (W),Max load (W),Channel use,Status,Notes
+1,ETC UFMP8,1,1,1,1,0-10V,Linear Right,Auditorium,,,,,,Dimmer,Open,"Panel start address 1. Each zone's relay switches its circuit and its 0-10V output dims the drivers. Check the relay rating in ETC's manual"
+2,ETC UFMP8,2,2,1,2,0-10V,Linear Center,Auditorium,,,,,,Dimmer,Open,
+3,ETC UFMP8,3,3,1,3,0-10V,Linear Right,Auditorium,,,,,,Dimmer,Open,
+4,ETC UFMP8,4,4,1,4,0-10V,,,,,,,,Dimmer,Open,
+5,ETC UFMP8,5,5,1,5,0-10V,,,,,,,,Dimmer,Open,
+6,ETC UFMP8,6,6,1,6,0-10V,,,,,,,,Dimmer,Open,
+7,ETC UFMP8,7,7,1,7,0-10V,,,,,,,,Dimmer,Open,
+8,ETC UFMP8,8,8,1,8,0-10V,,,,,,,,Dimmer,Open,
+9,DLS PD804-DMX-120,1,9,1,9,Forward phase,,,,,,,480,Dimmer,Open,"Pack start address 9. 4 A an output, which DLS also lists as 500 W. LEDs must be TRIAC (forward phase) dimmable"
+10,DLS PD804-DMX-120,2,10,1,10,Forward phase,,,,,,,480,Dimmer,Open,
+11,DLS PD804-DMX-120,3,11,1,11,Forward phase,,,,,,,480,Dimmer,Open,
+12,DLS PD804-DMX-120,4,12,1,12,Forward phase,,,,,,,480,Dimmer,Open,
+13,DLS PD804-DMX-120,5,13,1,13,Forward phase,,,,,,,480,Dimmer,Open,
+14,DLS PD804-DMX-120,6,14,1,14,Forward phase,,,,,,,480,Dimmer,Open,
+15,DLS PD804-DMX-120,7,15,1,15,Forward phase,,,,,,,480,Dimmer,Open,
+16,DLS PD804-DMX-120,8,16,1,16,Forward phase,,,,,,,480,Dimmer,Open,
+17,DLS PD408-DMX-120,1,17,1,17,Forward phase,Chandeliers,Auditorium,,,,,960,Dimmer,Open,"Pack start address 17. 8 A an output, which DLS also lists as 1000 W. LEDs must be TRIAC (forward phase) dimmable"
+18,DLS PD408-DMX-120,2,18,1,18,Forward phase,,,,,,,960,Dimmer,Open,
+19,DLS PD408-DMX-120,3,19,1,19,Forward phase,,,,,,,960,Dimmer,Open,
+20,DLS PD408-DMX-120,4,20,1,20,Forward phase,,,,,,,960,Dimmer,Open,
+21,,,481,32,512,,Temporary lights,None,,,,,,,Reserved,"Kept free for special-occasion fixtures. Companion sends 0 here, so the iPad runs them"

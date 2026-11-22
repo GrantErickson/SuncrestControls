@@ -4,7 +4,7 @@ Every door station is a Stream Deck +, the same as the rack, with the same pages
 
 | Protection | Stops | Cost | Downside |
 | --- | --- | --- | --- |
-| Lock each door out of pages | iPad Mode, playlists, single light areas, Bluetooth and single zones at the doors | Free | Home stays open to anyone |
+| Lock each door out of pages | iPad Mode, playlists, single light areas, Bluetooth, single zones and single TVs at the doors | Free | Home stays open to anyone |
 | Mounting toward the top of the reach range | Small children | Free | Check accessibility rules first |
 | [Companion PIN lockout](https://github.com/bitfocus/companion/blob/main/docs/user-guide/3_config/settings.md) | Anyone without the code | Free | Slower for volunteers |
 | Lockable clear cover | Everyone without a key | Low | Someone has to find the key |

@@ -21,7 +21,7 @@ The top row is the lights, the bottom row is the sound, and the dials fine-tune 
 | Turn Audio Off | Everything goes quiet and the amplifiers turn off. The key turns red and says **Turn Audio On**. Press it to turn the sound system back on |
 | Auditorium | Inside speakers play the service. Press again to stop it |
 | Music | Inside speakers play the playlist. Press again to stop it |
-| More | Light Control, Audio Source, Audio Zones, Playlists and iPad Mode |
+| More | Light Control, Audio Source, Audio Zones, Playlists, iPad Mode and the TVs |
 
 | Dial | Turn | Push |
 | --- | --- | --- |
@@ -42,7 +42,25 @@ To set one area of lights, such as the fireplace, press **More**, then **Light C
 
 To turn the sound on or off in one place, press **More**, then **Audio Zones**. Tap the place, then press the switch beside **Vestibule**. It names the place and says **Turn Off** or **Turn On**. The third dial sets that place's volume.
 
-When you leave for the night, press **Lights Off** and **Turn Audio Off**.
+When you leave for the night, press **Lights Off** and **Turn Audio Off**, then **More** and **Turn TVs Off**.
+
+## The TVs
+
+Press **More**. The key beside **iPad Mode** switches every TV at once: green and saying **Turn TVs Off** while any is on, red and saying **Turn TVs On** while they're all off. Each TV comes on showing what it usually shows.
+
+To change one TV, press **More**, then **TVs**, then that TV. Green means it's on, and the line above its name says what it shows. On its page:
+
+| Press | What happens |
+| --- | --- |
+| The first key, with the TV's name | Turns it off, or back on. It says **Turn Off** or **Turn On** |
+| Stream | The live stream |
+| Announcements | The announcement slides |
+| Custom | The special signal set up for an event |
+| SDI | Another video source from the production room |
+| USB | Turns the TV on. Then pick the USB stick with the TV's remote |
+| Local HDMI | A laptop or player plugged in at that TV |
+
+The one it shows is lit. Choosing one turns the TV on if it's off. **Back** returns to the list of TVs.
 
 ## Playing music from a phone
 
@@ -83,6 +101,9 @@ Every door and the schedule use the new look straight away. If you change your m
 | Nobody can hear the mics | Check the Mics panel on the rack. If it says **Off**, the sound system is off, so turn it on as above. If it says **Muted**, push the Mics dial |
 | The Volume or Mics panel says **NO WING** | The rack can't reach the sound desk. Call your technical contact |
 | Music stopped | Open the WiiM Home app and check the internet |
+| A TV shows the wrong thing | Press **More**, **TVs**, then that TV, and press what it should show |
+| A TV is blank on Local HDMI or USB | Check the laptop or the USB stick at that TV, or press **Announcements** |
+| Every TV is black on Stream, Announcements, Custom and SDI | Those come from the switcher in the production room. Ask the production team |
 | Everything is dead | Check the UPS in the rack |
 
 If Companion fails, the buttons stop and the audio stays as it is. The lights may hold or go dark. A technical person can run the lights from the lighting iPad and the audio from the Wing app.

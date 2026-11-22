@@ -42,7 +42,7 @@ Keep passwords out of the repo. Store them in the church's password manager, inc
 3. Run the affected tests from the Testing section afterward.
 4. Record the new version in the decision log.
 
-Record the ODE's settings before a firmware update, and check them afterward. `sudo companion-update` can also move Companion back to an earlier version. After a Companion update, run bench tests 3, 12, 13 and 15, because they cover the lights, the dials and the amplifier power.
+Record the ODE's settings before a firmware update, and check them afterward. `sudo companion-update` can also move Companion back to an earlier version. After a Companion update, run bench tests 3, 12, 13, 15 and 16, because they cover the lights, the dials, the amplifier power and the TVs.
 
 ## Planning for replacement
 

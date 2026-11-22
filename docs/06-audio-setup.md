@@ -70,22 +70,39 @@ No zone listens to Bluetooth by default, so a stray pairing plays nowhere.
 14. With a mic in the room and Bus 13 at 0 dB, set each mic channel's level just below feedback in the loudest zone. The Mic dial stops at 0 dB, so a volunteer can't push the mics into feedback.
 15. Save this as a snapshot called Lobby Base, and keep a copy in the repo.
 
-## Amplifier power
+## Audio power
 
-A [Furman CN-1800S](https://furmanpower.com/products/cn-1800s) sequencer powers the amplifiers. Companion switches it through a [Shelly Pro 1](https://us.shelly.com/collections/smart-relays) relay, whose dry contact is wired to the Furman's remote terminals. These steps follow the [CN-1800S manual](https://www.markertek.com/Attachments/Manuals/FURMAN/CN-1800S-Manual.pdf), so check them against the manual for the unit you buy.
+A [Juice Goose iP-1520](https://goknight.com/juice-goose-ip-1520-web-based-power-controller/) powers the rack gear that turns off with the audio, the amplifiers among them. [TP-Link Kasa EP10](https://www.tp-link.com/us/support/download/ep10/) smart plugs power the powered speakers. Companion talks to the Juice Goose over UDP and to each plug through the Kasa module. These steps follow the [iP Series manual](https://goknight.com/content/documentation/iP_Series_Manual_Rev_6_2023%20(3).pdf).
 
-1. Plug the amplifiers into the Furman's DELAY 2 and DELAY 3 outlets, as Furman recommends for amplifiers.
-2. Plug the Wing Rack into an UNSWITCHED outlet. Keep the WiiM and the Bluetooth receiver on always-on power too, so music starts as soon as Music is pressed. The CN-1800S has three unswitched outlets, two at the back and one at the front.
-3. Set DIP switch 7 to maintained, MNT, and DIP switch 5 to 12V ON. A closed contact between the +12V and REM terminals then turns the amplifiers on, and an open one turns them off.
-4. The factory delay is about 30 seconds between outlet banks, which would make a source key feel dead. Set DIP switches 1 to 3 down and turn the DLY ADJ control fully counterclockwise, for the shortest delay the unit allows. Time it during bench test 15.
-5. Wire the Shelly's two relay output terminals to +12V and REM, with 24 AWG wire.
-6. Give the Shelly its static address, 192.168.50.45, and set its power-on state to restore the last state.
-7. Turn the Furman's key switch to REMOTE. ON keeps the amplifiers on whatever Companion says, and OFF keeps them off. That's the manual fallback if the relay fails.
-8. From a browser, open `http://192.168.50.45/rpc/Switch.Set?id=0&on=true`. The DELAY lights come on in turn. `on=false` turns them off in reverse.
+The iP-1520 has three switched pods, each a duplex receptacle, and one unswitched outlet, 20 A in all. It plugs into a 20 A circuit with a NEMA 5-20 receptacle. Turning on, it sequences pod 1, then 2, then 3. Turning off, it goes 3, 2, 1.
 
-Turn Audio Off turns every zone off first, then waits half a second before it opens the relay, so the amplifiers never switch with signal on them. The [Shelly API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Switch) documents the command.
+| Outlet | Plug in |
+| --- | --- |
+| Unswitched | The Wing Rack, the WiiM and the Bluetooth receiver, through a strip if needed. They stay on so Companion can always reach them |
+| Pod 1 | Anything that only needs power with the audio, such as the wireless mic receivers. Free otherwise |
+| Pods 2 and 3 | The amplifiers, so they come on last and go off first |
 
-If the fire alarm contractor requires audio to stop on alarm, wire the alarm's dry contact to the Furman's FORCE OFF terminals. After a Force Off, turn the key switch to OFF and back to REMOTE to reset it.
+Set up the Juice Goose:
+
+1. Connect it to the AV switch and browse to `http://juicegoose`, or 192.168.1.77 if that fails. Sign in as `admin` with the password `juicegoose`, then change both passwords.
+2. Under iP Series Management, Network, turn off DHCP and set 192.168.50.45, mask 255.255.255.0 and gateway 192.168.50.1.
+3. On the Configuration tab, enable UDP on its default port, 30333. Leave TCP off.
+4. Turn on the Power Loss Feature, so pods that were on sequence back on after an outage.
+5. Leave the Power Cycle feature off. It reboots pod 1 when a ping fails, which suits a router, not audio gear.
+6. Test from the Control page: set the sequence to 1 second and press Sequence Up. The pod lights come on in turn.
+
+Set up each speaker plug:
+
+1. Plug it in at the powered speaker and add it in the Kasa app on the AV Wi-Fi, which must be 2.4 GHz. Name it after the speaker.
+2. In the Kasa app's settings, turn on **Third Party Compatibility**. On firmware 1.1.1 and later, [Companion can't find the plug without it](https://github.com/bitfocus/companion-module-tplink-kasasmartplug/issues/58).
+3. Reserve its address in DHCP: 192.168.50.46 for the first plug and 192.168.50.47 for the second. The plugs can't set a static address themselves.
+4. Make sure Companion can reach the plugs on the Wi-Fi. If the access point isolates wireless clients, allow the plugs through.
+
+Companion sends `DEACTIVATE` before each sequence, because the manual says the front rocker switch otherwise overrides remote commands. Turn Audio On sequences the pods up a second apart, then turns the speaker plugs on 2.5 seconds later, once the amplifiers are up. Turn Audio Off turns every zone off first, then the speaker plugs, then a second later sequences the pods down. Nothing switches with signal on it.
+
+The manual fallbacks are on the front of the Juice Goose. Its recessed slide switch turns every outlet on if its controller fails. The rocker sequences the pods up or down, but only after `ACTIVATE` is sent from its web console, since Companion turns it off. Each Kasa plug has a button that turns it on or off by hand.
+
+If the fire alarm contractor requires audio to stop on alarm, the Juice Goose has no alarm input, so it needs another way, such as a relay the alarm opens in the amplifiers' power.
 
 ## Protect the zones from scene recalls
 

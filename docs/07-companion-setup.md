@@ -19,7 +19,7 @@ Companion holds the button layouts, the logic and the lights. Every page, artwor
 
 1. Open [Import/Export](https://github.com/bitfocus/companion/blob/main/docs/user-guide/3_config/import-export.md) and choose [lobby.companionconfig](../config/stream-deck/lobby.companionconfig).
 2. On the **Full import** tab, leave every available category selected, including the **Image Library**, and choose **Full Reset then Import**. Only do this on a new install, because it replaces what is there.
-3. Open Connections and confirm the four below. Companion uses the newest installed version of each module, so if one reports a missing module, install it from the Modules page.
+3. Open Connections and confirm the fourteen below. Companion uses the newest installed version of each module, so if one reports a missing module, install it from the Modules page.
 4. Run [bench test 13](09-testing.md).
 
 | Connection | Module | Settings in the file |
@@ -27,9 +27,12 @@ Companion holds the button layouts, the logic and the lights. Every page, artwor
 | `wing` | [behringer-wing](https://github.com/bitfocus/companion-module-behringer-wing) | Desk IP 192.168.50.20, desk type Wing Rack |
 | `dmx` | [generic-artnet](https://github.com/bitfocus/companion-module-generic-artnet) | Receiver 192.168.50.31, the ODE, universe 0 |
 | `wiim` | [generic-http](https://github.com/bitfocus/companion-module-generic-http) | Base URL `https://192.168.50.40/`, unauthorized certificates accepted |
-| `power` | [generic-http](https://github.com/bitfocus/companion-module-generic-http) | Base URL `http://192.168.50.45/`, the Shelly relay that switches the amplifiers' Furman |
+| `power` | [generic-tcp-udp](https://github.com/bitfocus/companion-module-generic-tcp-udp) | UDP to 192.168.50.45, port 30333, the Juice Goose iP-1520 that sequences the rack's switched outlets |
+| `speaker1`, `speaker2` | [tplink-kasasmartplug](https://github.com/bitfocus/companion-module-tplink-kasasmartplug) | Plug IP 192.168.50.46 and 192.168.50.47, network scan off, polling on. The Kasa plugs on the powered speakers |
+| `atem` | [bmd-atem](https://github.com/bitfocus/companion-module-bmd-atem) | Placeholder address 192.168.10.240, the ATEM's factory address, model 4 M/E Constellation HD. The production ATEM, which feeds each TV from its own output |
+| `tv1` to `tv7` | [generic-tcp-udp](https://github.com/bitfocus/companion-module-generic-tcp-udp) | TCP to 192.168.50.81 to .87, port 20060, Sony's Simple IP control. The Sony BRAVIA 3 II TVs |
 
-The WiiM uses a self-signed certificate, which is why the file accepts it. The file holds pages, variables, triggers, connections, 113 artwork images, the Elgato Stream Deck surface integration, and four surface groups. It doesn't hold the decks themselves or passwords, so add those next.
+The WiiM uses a self-signed certificate, which is why the file accepts it. The file holds pages, variables, triggers, connections, 173 artwork images, the Elgato Stream Deck surface integration, and four surface groups. It doesn't hold the decks themselves or passwords, so add those next. Replace the ATEM's placeholder address in `atem` once the real one is known. The TVs need no key. [TVs](15-tvs.md#setting-up-each-bravia-3-ii) has the settings on each TV, and the [TV sheet](../config/network/tvs.csv) lists them.
 
 Companion 5 drives USB Stream Decks through a surface integration. A full reset replaces the integrations with the ones in the file, which is why the file carries the Elgato one. An import that resets surfaces from a file without it leaves every Stream Deck showing Offline.
 
@@ -59,11 +62,13 @@ Every station starts with every page. To keep a door to the basics, open **Surfa
 | Page | Holds | Locking it out stops |
 | --- | --- | --- |
 | 1, Home | Lights Off, Lights 1 to 3, the audio power key, Auditorium, Music, and the four dials | Keep it. Every station needs it |
-| 2, More | Light Control, Audio Source, Audio Zones, Playlists and iPad Mode | Leaving iPad Mode, and the pages below, which are only reached from More |
+| 2, More | Light Control, Audio Source, Audio Zones, Playlists, iPad Mode, Turn TVs On or Off, and TVs | Leaving iPad Mode, and the pages below, which are only reached from More |
 | 3, Playlists | Seven playlists | Changing the playlist |
 | 4, Light Control | Each light area on its own | Setting single areas |
 | 5, Audio Source | Auditorium, Music, Bluetooth, Lobby Stage and the Bluetooth level | Playing Bluetooth or the Lobby Stage, and setting the Bluetooth level |
 | 6, Audio Zones | Each zone on or off, and its volume | Changing a single zone |
+| 7, TVs | A key for each TV, opening its page | Reaching any single TV. Turn TVs On and Off stays on More |
+| 8 to 14, one for each TV | That TV on or off, and what it shows | Changing that TV. Take out the pages of TVs a door has no business with |
 
 A key that opens a page the group can't use sends that deck to its first allowed page instead, which is Home. So on a door locked out of More, **More** simply stays on Home. Companion 5.1.3's surface groups work this way.
 
@@ -94,9 +99,11 @@ To try a door's group, set the +'s **Surface Group** to **Door 1**. It works exa
 | 4 | Light Control | Every station, unless locked out |
 | 5 | Audio Source | Every station, unless locked out |
 | 6 | Audio Zones | Every station, unless locked out |
-| 20 to 24 | Library, the shared building blocks | No surface |
+| 7 | TVs | Every station, unless locked out |
+| 8 to 14 | Main Lobby TV, Right Lobby TV, Cafe TV, Entry Hall TV, Kitchen TV, Meeting Room TV, Back Stage TV | Every station, unless locked out |
+| 20 to 26 | Library, the shared building blocks | No surface |
 
-The Library is why this stays maintainable. Each real key runs a Library block with **Button: Trigger press and release**, so a change happens in one place. Pages 7 to 19 are empty.
+The Library is why this stays maintainable. Each real key runs a Library block with **Button: Trigger press and release**, so a change happens in one place. Pages 15 to 19 are empty.
 
 ## The main page
 
@@ -105,7 +112,7 @@ The Library is why this stays maintainable. Each real key runs a Library block w
 | **Bottom row** | **Turn Audio Off**, or **Turn Audio On** | **Auditorium** | **Music** | **More** |
 | **Dials** | **All Lights** | **Linear** | **Volume** | **Mics** |
 
-The touch strip shows each dial's value and a level bar above it. The first two dials and the last one do the same thing on every page. The third dial follows the page: Volume on Home, More and Playlists, the picked area on Light Control, Bluetooth on Audio Source, and the picked zone on Audio Zones.
+The touch strip shows each dial's value and a level bar above it. The first two dials and the last one do the same thing on every page. The third dial follows the page: Volume on Home, More, Playlists and the TV pages, the picked area on Light Control, Bluetooth on Audio Source, and the picked zone on Audio Zones.
 
 | Dial | Turn | Push |
 | --- | --- | --- |
@@ -137,18 +144,22 @@ More is the jumping-off point. Its dials match Home's, and **Home** is in the bo
 
 | Top row | Light Control | Audio Source | Audio Zones | Playlists |
 | --- | --- | --- | --- | --- |
-| **Bottom row** | **iPad Mode** | Blank | Blank | **Home** |
+| **Bottom row** | **iPad Mode** | **Turn TVs Off**, or **Turn TVs On** | **TVs** | **Home** |
 
 - **Light Control** has a key for each light area: Cafe, Chandeliers, Entry Hall, Sconces, Soffit, Fireplace and Outside. Tap one to pick it, and the third dial, Area, sets it. Each key is lit while its area is on, with its level along the bottom, and the picked one has a white ring. The looks hold every area's level, so Lights 1 to 3 reset them all and holding a Lights key saves them all. With the lights off, turning an area up brings it on by itself.
 - **Playlists** has Morning, Everyday, Evening, Seasonal, Calm, Pop and Upbeat, and Home. A playlist key is lit while it plays. In a silent room it starts music inside, like Music on Home. For music outside too, switch the entries on in Audio Zones.
 - **Audio Source** shows Auditorium, Music, Bluetooth and Lobby Stage, each lit while it plays. They toggle like the keys on Home. The third dial sets the Bluetooth level, playing or not, and keeps it.
 - **Audio Zones** has a key for each zone: Lobby, Main Entry, North Entry, Bathrooms and Vestibule. Tap one to pick it. The switch beside Vestibule names the picked zone and turns it on or off: green and saying Turn Off while it plays, red and saying Turn On while it's off. A zone switched on plays what the other zones are playing, or the source played last if nothing is, and turns the audio system on if it's off. The third dial, Zone, sets the picked zone's volume.
 
+- **Turn TVs Off** or **Turn TVs On** switches every TV at once. It's green while any TV is on, saying Turn TVs Off, with how many are on when it isn't all of them. It's red while they're all off, saying Turn TVs On, and a press turns each TV on showing its default.
+- **TVs** opens a page with a key for each TV: Main Lobby, Right Lobby, Cafe, Entry Hall, Kitchen, Meeting Room and Back Stage. Each is green while that TV is on, with what it shows above its name, and red while it's off. Tap one to open that TV's page.
+- **Each TV's page** starts with a switch that names the TV: green and saying Turn Off while it's on, red and saying Turn On while it's off. The next six keys choose what it shows: Stream, Announcements, Custom, SDI, USB and Local HDMI. The one it shows is lit, and choosing one turns the TV on. Back returns to TVs, whose last key is Home. [TVs](15-tvs.md) has the defaults and how the TVs connect.
+
 Blank keys show their piece of the page's picture and do nothing.
 
 ## Audio power
 
-The bottom row of Home turns the audio system on and off, as well as choosing what plays. The first key shows the state by its color, and its label says what a press does. A Furman sequencer powers the amplifiers, and Companion switches it through the `power` connection, a network relay wired to the Furman's remote terminals. [Audio setup](06-audio-setup.md#amplifier-power) has the wiring.
+The bottom row of Home turns the audio system on and off, as well as choosing what plays. The first key shows the state by its color, and its label says what a press does. A Juice Goose iP-1520 powers the rack gear that turns off with the audio, the amplifiers among them, through the `power` connection. Kasa smart plugs power the powered speakers, through `speaker1` and `speaker2`. [Audio setup](06-audio-setup.md#audio-power) has the setup.
 
 | Key | While the audio is off | While it's on |
 | --- | --- | --- |
@@ -156,11 +167,11 @@ The bottom row of Home turns the audio system on and off, as well as choosing wh
 | Auditorium, Music, Bluetooth, Lobby Stage | Press to turn the system on and play that source | Lit while its source plays anywhere. Press a lit key to turn its source off, leaving the system on. Press another to swap to it |
 | A playlist, the zone switch | Press to turn the system on and play | Plays, as before |
 | Volume, Mics, Bluetooth and Zone dials | Do nothing. Their panels say Off and go grey | Work as usual |
-| The night schedule | Stays off | Turns the lights and the audio system off |
+| The night schedule | Stays off | Turns the lights, every TV and the audio system off |
 
-`audio_power` holds the state, 1 for on and 0 for off. Only two Library blocks talk to the relay, `21/3/0` Power On and `21/3/1` Power Off, so a different power switch means editing those two and the startup trigger.
+`audio_power` holds the state, 1 for on and 0 for off. Only two Library blocks talk to the Juice Goose and the plugs, `21/3/0` Power On and `21/3/1` Power Off, so a different power switch means editing those two and the startup trigger.
 
-Sound starts once the Furman has brought the amplifiers up, so keep its delay short, as Audio setup describes. The Wing Rack, the WiiM and the Bluetooth receiver stay on all the time, so Companion never loses them.
+Turning on, the Juice Goose sequences its pods on a second apart, amplifiers last, and the speaker plugs turn on 2.5 seconds later. Turning off goes the other way: speakers first, then the pods, amplifiers first. Sound starts within a few seconds of a source key. The Wing Rack, the WiiM and the Bluetooth receiver stay on all the time, so Companion never loses them.
 
 ## The whole-room buttons
 
@@ -191,11 +202,11 @@ Any station that can open More can leave iPad Mode. Lock the doors out of More t
 
 ## Close Up
 
-**Close Up** is a Library block, `22/2/6`, that turns off the lights and the audio system and leaves iPad Mode, so the doors can't stay locked. The night schedule runs it, and no key does. To shut down by hand, press **Lights Off** and **Turn Audio Off** on Home.
+**Close Up** is a Library block, `22/2/6`, that turns off the lights, every TV and the audio system and leaves iPad Mode, so the doors can't stay locked. The night schedule runs it, and no key does. To shut down by hand, press **Lights Off** and **Turn Audio Off** on Home, and **Turn TVs Off** on More.
 
 ## The startup trigger
 
-Companion sends the lights, so a restart matters. Five seconds after Companion starts, the **Startup recovery** trigger fades the lights back to where they were. In iPad Mode it keeps Companion's light output at zero. It also sends the audio power state to the relay again, so the two agree.
+Companion sends the lights, so a restart matters. Five seconds after Companion starts, the **Startup recovery** trigger fades the lights back to where they were. In iPad Mode it keeps Companion's light output at zero. It also sends the audio power state to the Juice Goose and the speaker plugs again, so they agree.
 
 ## Turn on the schedule after launch
 

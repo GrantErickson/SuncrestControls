@@ -1,0 +1,8 @@
+ID,TV,Location,Make and model,Size,Serial number,MAC address,IP address,Companion connection,Control,Deck page,ATEM output,ATEM output name,HDMI 1,HDMI 2,Converter,Default,Firmware,Status,Notes
+1,Main Lobby,,Sony BRAVIA 3 II,,,,192.168.50.81,tv1,"Simple IP control, TCP 20060",8,18,TV Main Lobby,ATEM output 18 through the converter,Local HDMI wall plate,,Announcements,,Planned,"Reserve each address in DHCP by the TV's MAC address. On each TV turn on Remote start (Control remotely on newer firmware) and Simple IP control, and turn off BRAVIA Sync. docs/15-tvs.md has every setting"
+2,Right Lobby,,Sony BRAVIA 3 II,,,,192.168.50.82,tv2,"Simple IP control, TCP 20060",9,19,TV Right Lobby,ATEM output 19 through the converter,Local HDMI wall plate,,Announcements,,Planned,
+3,Cafe,,Sony BRAVIA 3 II,,,,192.168.50.83,tv3,"Simple IP control, TCP 20060",10,20,TV Cafe,ATEM output 20 through the converter,Local HDMI wall plate,,Announcements,,Planned,
+4,Entry Hall,,Sony BRAVIA 3 II,,,,192.168.50.84,tv4,"Simple IP control, TCP 20060",11,21,TV Entry Hall,ATEM output 21 through the converter,Local HDMI wall plate,,Announcements,,Planned,
+5,Kitchen,,Sony BRAVIA 3 II,,,,192.168.50.85,tv5,"Simple IP control, TCP 20060",12,22,TV Kitchen,ATEM output 22 through the converter,Local HDMI wall plate,,Stream,,Planned,
+6,Meeting Room,,Sony BRAVIA 3 II,,,,192.168.50.86,tv6,"Simple IP control, TCP 20060",13,23,TV Meeting Room,ATEM output 23 through the converter,Local HDMI wall plate,,Announcements,,Planned,
+7,Back Stage,,Sony BRAVIA 3 II,,,,192.168.50.87,tv7,"Simple IP control, TCP 20060",14,24,TV Back Stage,ATEM output 24 through the converter,Local HDMI wall plate,,Stream,,Planned,

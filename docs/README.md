@@ -1,6 +1,6 @@
 # Suncrest Lobby Controls
 
-These documents plan the lobby's lighting and audio controls, and give the steps to set them up. Bitfocus Companion runs both from Stream Decks at the doors and beside the rack.
+These documents plan the lobby's lighting, audio and TV controls, and give the steps to set them up. Bitfocus Companion runs both from Stream Decks at the doors and beside the rack.
 
 The design is proposed, not final, until the bench tests in [Testing](09-testing.md) pass.
 
@@ -14,6 +14,7 @@ The design is proposed, not final, until the bench tests in [Testing](09-testing
 | [Audio setup](06-audio-setup.md) | Wing Rack zones, sources, mics and protection | Technical team |
 | [Companion setup](07-companion-setup.md) | Install, import, surfaces, iPad Mode and schedule | Technical team |
 | [Stream Deck pages](14-stream-deck-pages.md) | Every page and key, with what runs behind it | Technical team |
+| [TVs](15-tvs.md) | The seven TVs, their defaults, and what connecting them needs | Technical team |
 | [Door stations](08-door-stations.md) | Deck choice, mounting, height and covers | Installers |
 | [Testing](09-testing.md) | Bench tests, build order and commissioning | Technical team |
 | [Everyday use](10-everyday-use.md) | Printable guide for people using the system | Volunteers and staff |

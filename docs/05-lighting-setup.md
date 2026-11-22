@@ -15,10 +15,44 @@ Companion's own [Art-Net module](https://github.com/bitfocus/companion-module-ge
 | Dimmer and Brighter, at the doors | Move every light 10% |
 | Hold a Lights key on the rack for 3 seconds | Saves the lights as they are now into that key. The key turns green and says Saved |
 
+## The dimmers
+
+Every light in the lobby is a dimmer channel on one of three controllers, all on the one DMX universe. They take 20 channels.
+
+| Controller | Channels | Outputs | How it dims | Limit per output |
+| --- | --- | --- | --- | --- |
+| [ETC UFMP8](https://www.etcconnect.com/Products/Architectural-Systems/Foundry/Mini-Panels/Features.aspx) Foundry Mini Panel | 1 to 8 | 8 zones, each a relay and a 0-10V output | The relay switches the circuit and 0-10V dims the drivers, one DMX channel a zone | See the relay rating in ETC's manual |
+| [DLS PD804-DMX-120](https://www.digitallighting.com/animationfolder/pd804%20dmx%20dimmers.htm) | 9 to 16 | 8 line-voltage dimmers | Forward phase (leading edge) | 4 A, 480 W at 120 V. DLS also lists 500 W |
+| [DLS PD408-DMX-120](https://www.digitallighting.com/animationfolder/pd408%20dmx%20dimmers.htm) | 17 to 20 | 4 line-voltage dimmers | Forward phase (leading edge) | 8 A, 960 W at 120 V. DLS also lists 1000 W |
+
+The two DLS packs dim incandescent, MLV, ELV and LED loads, and any output can be set to switch only. LEDs on them must be TRIAC (forward phase) dimmable. Size each output to the lower wattage until DLS confirms it, and leave headroom for LED inrush. They set their start address on hex rotary switches, so check the DLS manual for how channel 9 and 17 are dialed in.
+
+## The patch sheet
+
+[config/network/dmx-patch.csv](../config/network/dmx-patch.csv) has one row for each thing being dimmed, which is one row a controller output. Open it in Excel and fill in each output as its circuit is assigned. Channels 481 to 512 are kept free for temporary lights.
+
+| Column | What goes in it |
+| --- | --- |
+| ID | A short number for the row, to label the circuit |
+| Controller, Output | The controller and which of its outputs this is |
+| Start channel, Channels, End channel | The DMX channel. A dimmer output takes one, so all three match. A fixture with its own DMX, such as a temporary color light, takes a range |
+| Dimming | 0-10V, or forward phase for the line-voltage packs |
+| Light | What's on this output, such as Cafe pendants |
+| Area | The control it follows: Linear, or a Light Control area (Cafe, Chandeliers, Entry Hall, Sconces, Soffit, Fireplace or Outside). None for lights only the iPad runs |
+| Location | Where those lights are |
+| Make and model | The fixtures on this output |
+| Fixtures | How many fixtures are on this output |
+| Load (W) | Their total wattage. Keep it under Max load |
+| Max load (W) | The controller's limit for one output |
+| Channel use | `Dimmer` for every output here. A fixture with its own DMX lists each channel in order, separated by semicolons |
+| Status | Open until a light is assigned, then Assigned, then Confirmed once it's wired and tested |
+
+In Channel use, a plain name such as `Dimmer` follows the area's level from 0 to 255. `Red up to 200` follows the level but tops out at 200, which sets a color mix that still dims. `Strobe = 0` holds a channel at that value. A dimmer output set to switch only can say `Switch`.
+
 ## Wire the DMX
 
-1. Address every fixture and 0-10V decoder, and record them on a DMX patch sheet.
-2. Run ODE Port 1 to the fixture DMX line, and terminate the end of the line.
+1. Set the UFMP8's start address to 1, the PD804's to 9 and the PD408's to 17, and record any change on the [patch sheet](../config/network/dmx-patch.csv).
+2. Run ODE Port 1 to the UFMP8, then on to the PD804 and the PD408, and terminate the end of the line. The DLS packs take DMX on RJ45 in and out connectors, with XLR as an order option, so match the connectors to the ODE and the UFMP8's DMX terminals.
 3. Leave Port 2 free. It can become a second universe later.
 
 ## Set up the ODE Mk3
@@ -32,11 +66,11 @@ Steps follow the [ODE Mk3 manual](https://support.enttec.com/user-manuals/ode-mk
 
 ## Set the patch in Companion
 
-The imported file has placeholder channels until the patch sheet exists. Each group of channels follows one level.
+The imported file still has placeholder channels from before the controllers were chosen: the seven areas sit on channels 9 to 32, but only 9 to 20 exist. They line up once each output's Area is filled in on the patch sheet. Each group of channels follows one level.
 
 | Channels | Follows | What they are |
 | --- | --- | --- |
-| 1 to 8 | The Linear dial and each look's linear level | Linear house lights, through 0-10V decoders |
+| 1 to 8 | The Linear dial and each look's linear level | Linear house lights, on the ETC UFMP8 0-10V zones |
 | 9 to 12 | Cafe | Placeholder |
 | 13 to 16 | Chandeliers | Placeholder |
 | 17 to 20 | Entry Hall | Placeholder |

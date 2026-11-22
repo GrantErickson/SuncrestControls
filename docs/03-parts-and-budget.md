@@ -1,6 +1,6 @@
 # Parts list and budget
 
-The control electronics come to about $2,280 for three door stations. About $1,710 comes from retail listings and about $570 is an assumption. Check prices before ordering.
+The control electronics come to about $2,230 for three door stations. About $1,640 comes from retail listings and about $595 is an assumption. Check prices before ordering.
 
 | Item | Qty | Each (USD) | Total (USD) | Job | Price basis |
 | --- | --- | --- | --- | --- | --- |
@@ -12,11 +12,13 @@ The control electronics come to about $2,280 for three door stations. About $1,7
 | Fanless mini PC with SSD | 1 | 250 | 250 | Runs Companion, which now also sends the lights | Assumed |
 | Managed PoE switch, 8 or more ports | 1 | 170 | 170 | AV network | Assumed |
 | UPS | 1 | 150 | 150 | Keeps controls up through power blips | Assumed |
-| [Shelly Pro 1](https://us.shelly.com/collections/smart-relays) | 1 | 70 | 70 | Network relay that lets Companion switch the Furman, and so the amplifiers. Get the model with a LAN port | Listed |
+| [Kasa Smart Plug Mini EP10, 2-pack](https://www.amazon.com/Kasa-Smart-Required-Certified-EP10P2/dp/B091FXQQMQ) | 1 | 25 | 25 | Lets Companion switch the powered speakers | Assumed |
 
-This excludes door faceplates, cables, labor, and an access point if the building doesn't already have one for the AV network. The Wing Rack, amps and speakers are already planned separately.
+This excludes door faceplates, cables, labor, and an access point if the building doesn't already have one for the AV network. The Wing Rack, amps and speakers are already planned separately. The TVs aren't here either: seven Sony BRAVIA 3 II, and for each one an SDI cable from the production ATEM, a 3G-SDI to HDMI converter behind it, and an HDMI wall plate beside it for Local HDMI. The [TV sheet](../config/network/tvs.csv) lists them. [TVs](15-tvs.md) has what they need.
 
-The [Furman CN-1800S](https://furmanpower.com/products/cn-1800s) sequencer that powers the amplifiers lists at $809.95, and dealers sell it from about $725. It belongs with the amps, so it isn't in the total. If the amplifiers draw more than 15 A together, the CN-2400S is the 20 A model.
+The [Juice Goose iP-1520](https://goknight.com/juice-goose-ip-1520-web-based-power-controller/) that sequences the rack's power is $659.99 at Knight, against an $870 list price. It belongs with the amps, so it isn't in the total. It's rated 20 A for everything plugged into it.
+
+On 2026-11-21 the Juice Goose replaced the Furman CN-1800S sequencer, about $725, and the Shelly Pro 1 relay that switched it, $70. Companion now sends it commands directly.
 
 Plan on one spare Stream Deck + and one spare dock once the design is proven. They are the parts most exposed to the public, and because every station uses the same deck, one spare covers them all.
 

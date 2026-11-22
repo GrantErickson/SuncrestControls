@@ -4,7 +4,7 @@ This is every Stream Deck page, key by key, with what runs behind each one. It i
 
 Import [lobby.companionconfig](../config/stream-deck/lobby.companionconfig) into Companion instead of building these by hand. [Companion setup](07-companion-setup.md) has the steps.
 
-**Status:** The file has 209 buttons and has not yet been imported into a real Companion. Its format, every action and every button element were checked against the Companion 5.1.3 and module source, every expression in it was parsed and run, and its logic passed 195 simulated checks. [Bench test 13](09-testing.md) is the real proof.
+**Status:** The file has 404 buttons and has not yet been imported into a real Companion. Its format, every action and every button element were checked against the Companion 5.1.3 and module source, every expression in it was parsed and run, and its logic passed 228 simulated checks. [Bench test 13](09-testing.md) is the real proof.
 
 ## How a press reaches the hardware
 
@@ -15,7 +15,10 @@ Real keys don't talk to hardware directly. Each one runs a block on a Library pa
 | Wing Rack | `wing`, 192.168.50.20 | Wing OSC through the Behringer module | `/bus/14/send/MX1/on` = 1 |
 | ODE Mk3 | `dmx`, 192.168.50.31, Art-Net universe 0 | Channel values through the Art-Net module | `1-8,166;9-12,166;13-16,166;` and so on |
 | WiiM | `wiim`, https://192.168.50.40/ | HTTPS GET to `httpapi.asp?command=` | `MCUKeyShortClick:1` |
-| Amplifier power | `power`, http://192.168.50.45/ | HTTP GET to a Shelly Pro 1 relay, wired to the Furman sequencer's remote terminals | `rpc/Switch.Set?id=0&on=true` |
+| Rack power | `power`, 192.168.50.45, UDP 30333 | Console commands to a Juice Goose iP-1520 through the generic TCP/UDP module, each ended with a carriage return | `DEACTIVATE`, then `SEQUP1` |
+| Powered speakers | `speaker1`, 192.168.50.46, `speaker2`, 192.168.50.47 | On and off through the TP-Link Kasa Smart Plug module, one connection a plug | Power On |
+| TVs | `tv1` to `tv7`, 192.168.50.81 to .87, TCP 20060 | Sony's Simple IP control through the generic TCP/UDP module: 24-byte messages, each ended with a line feed | `*SCPOWR0000000000000001`, then `*SCINPT0000000100000001` for HDMI 1 |
+| ATEM | `atem`, 192.168.10.240 (a placeholder, the factory address), 4 M/E Constellation HD | An output's source through the Blackmagic ATEM module | Output 18 takes `$(custom:atem_stream)` |
 
 Key addresses read page/row/column from 0, the same form Companion uses. Rows and columns start at the top left.
 
@@ -23,21 +26,21 @@ On the Stream Deck +, rows 0 and 1 are the keys, row 2 is the touch strip, and r
 
 ## How it looks
 
-Amber is lighting, warm white is the linear lights, blue is audio, violet is music, teal is the mics, purple is the iPad, green is on and red is off. A lit key glows in its color with a bright ring and a white icon: it is the active choice. On Home, the Lights key playing is green and Lights Off is red while the lights are off, so with the audio power key below, a glance shows whether the lights and the audio are on. A white ring marks the key a dial is pointed at, on Light Control and Audio Zones, and those keys show their level along the bottom. In iPad Mode, lighting keys go grey and show a lock. A green key with a check mark has just saved a look. While the audio system is off, the audio power key is red and says Turn Audio On, and the audio panels on the touch strip go grey. While it is on, that key is green and says Turn Audio Off. On Audio Zones, each zone key is green while it plays and red while it's off, and the switch works like the power key for the picked zone.
+Amber is lighting, warm white is the linear lights, blue is audio, violet is music, teal is the mics, purple is the iPad, green is on and red is off. A lit key glows in its color with a bright ring and a white icon: it is the active choice. On Home, the Lights key playing is green and Lights Off is red while the lights are off, so with the audio power key below, a glance shows whether the lights and the audio are on. A white ring marks the key a dial is pointed at, on Light Control and Audio Zones, and those keys show their level along the bottom. In iPad Mode, lighting keys go grey and show a lock. A green key with a check mark has just saved a look. While the audio system is off, the audio power key is red and says Turn Audio On, and the audio panels on the touch strip go grey. While it is on, that key is green and says Turn Audio Off. On Audio Zones, each zone key is green while it plays and red while it's off, and the switch works like the power key for the picked zone. The TV keys work the same way: green while a TV is on and red while it's off, with magenta marking what a TV shows.
 
-Each page shows one picture across its eight keys, cut into a piece per key, and its touch strip is a lake reflecting the sky. Home is dawn, the sun cresting a ridge: over the lights row the sky brightens from Lights Off, under the moon, to Lights 3, nearest the sun. More, Playlists, Audio Source and Audio Zones are dusk, with the sun setting on the other side, and Light Control is night under the northern lights, so each part of the deck is easy to tell apart. Blank keys still show their piece. The picture allows for the bezel between keys (48 pixels, against a 144-pixel key), so it lines up across them. If it looks off on a real deck, measure a key and the gap between two keys and set `KEY_GAP` in build.py to 144 times the gap divided by the key.
+Each page shows one picture across its eight keys, cut into a piece per key, and its touch strip is a lake reflecting the sky. Home is dawn, the sun cresting a ridge: over the lights row the sky brightens from Lights Off, under the moon, to Lights 3, nearest the sun. More, Playlists, Audio Source and Audio Zones are dusk, with the sun setting on the other side, Light Control is night under the northern lights, and the TV pages are the blue hour, a teal glow left on the horizon, so each part of the deck is easy to tell apart. Blank keys still show their piece. The picture allows for the bezel between keys (48 pixels, against a 144-pixel key), so it lines up across them. If it looks off on a real deck, measure a key and the gap between two keys and set `KEY_GAP` in build.py to 144 times the gap divided by the key.
 
 The touch strip shows a live panel above each dial: what the dial does, its value, and a level bar that moves as you turn it.
 
 Labels are live text, so you can rename a key in Companion without touching its artwork. The artwork is in [config/stream-deck/icons](../config/stream-deck/icons): 144-pixel keys, drawn larger than the Stream Deck +'s 120-pixel keys so they stay sharp, and 200 by 100 touch strip panels, the size of each strip segment.
 
-Inside Companion the same 113 images live in the image library, stored once, and keys refer to them by name, such as `$(image:dawn_r0c2_level2_active)`. Replacing an image there changes every key that uses it.
+Inside Companion the same 173 images live in the image library, stored once, and keys refer to them by name, such as `$(image:dawn_r0c2_level2_active)`. Replacing an image there changes every key that uses it.
 
 ## Pages
 
 Every station is a Stream Deck + with 8 keys, a touch strip and 4 dials, and they all share these pages. The rack and each door have their own surface group, which sets the pages that station may use. Every group starts on Home with every page, so to lock a door out of something, untick its page in that door's group.
 
-The first two dials and the last one do the same thing on every page, so hands learn them. The third dial follows the page: Volume on Home, More and Playlists, the picked area on Light Control, Bluetooth on Audio Source, and the picked zone on Audio Zones.
+The first two dials and the last one do the same thing on every page, so hands learn them. The third dial follows the page: Volume on Home, More, Playlists and the TV pages, the picked area on Light Control, Bluetooth on Audio Source, and the picked zone on Audio Zones.
 
 ![Stream Deck pages](images/stream-deck-pages.png)
 
@@ -64,7 +67,7 @@ The first two dials and the last one do the same thing on every page, so hands l
 
 ### Page 2: More
 
-More is the jumping-off point to the pages below it. Its dials match Home's.
+More is the jumping-off point to the pages below it. Its dials match Home's. Turn TVs On and Off switches every TV at once, and TVs opens the page for each TV.
 
 | Key | Shows | Does | What runs behind it |
 | --- | --- | --- | --- |
@@ -73,8 +76,8 @@ More is the jumping-off point to the pages below it. Its dials match Home's.
 | `2/0/2` | Audio Zones | Opens Audio Zones, to turn each zone on or off and set its volume | This surface goes to page 6 |
 | `2/0/3` | Playlists | Opens Playlists | This surface goes to page 3 |
 | `2/1/0` | iPad Mode | Hold 1 second to hand the lights to the iPad, or to take them back | Hold 1 s:<br>&nbsp;&nbsp;Run `22/1/3` iPad Toggle |
-| `2/1/1` | Blank, showing its piece of the picture | Nothing yet | Nothing |
-| `2/1/2` | Blank, showing its piece of the picture | Nothing yet | Nothing |
+| `2/1/1` | Turn TVs Off | Green while any TV is on, saying Turn TVs Off, and how many are on if not all: press to turn every TV off. Red while they're all off, saying Turn TVs On: press to turn every TV on, each showing its default | Run `28/2/2` TVs On/Off |
+| `2/1/2` | TVs | Opens TVs, to turn each TV on or off and choose what it shows | This surface goes to page 7 |
 | `2/1/3` | Home | Opens Home | This surface goes to page 1 |
 | `2/2/0` | ALL LIGHTS (live) | Touch strip: the All Lights level, Off, or iPad | Nothing |
 | `2/2/1` | LINEAR (live) | Touch strip: the linear lights level | Nothing |
@@ -185,11 +188,67 @@ Each zone is green while it plays and red while it's off. Tap a zone to pick it.
 | `6/3/2` | Dial: Zone | Turn for the picked zone's volume, 1 dB a click, more when turned quickly. Push to put it back to its normal level. Does nothing while the audio is off | Push:<br>&nbsp;&nbsp;Run `24/2/3` Zone Reset<br>Turn left:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `zone-`<br>&nbsp;&nbsp;Run `24/2/2` Zone Down<br>Turn right:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `zone+`<br>&nbsp;&nbsp;Run `24/2/1` Zone Up |
 | `6/3/3` | Dial: Mics | Turn for mic volume, 1 dB a click, more when turned quickly, up to 0 dB. Push to mute or unmute the mics. Does nothing while the audio is off | Push:<br>&nbsp;&nbsp;Run `22/2/5` Mic Mute<br>Turn left:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `mic-`<br>&nbsp;&nbsp;Run `22/2/4` Mic Down<br>Turn right:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `mic+`<br>&nbsp;&nbsp;Run `22/2/3` Mic Up |
 
+### Page 7: TVs
+
+A key for each of the 7 TVs: green while it's on, with what it shows above its name, and red while it's off. Tap one to open its page.
+
+| Key | Shows | Does | What runs behind it |
+| --- | --- | --- | --- |
+| `7/0/0` | Main Lobby | Opens the Main Lobby TV's page. Green while it's on, with what it shows above its name, and red while it's off | This surface goes to page 8 |
+| `7/0/1` | Right Lobby | Opens the Right Lobby TV's page. Green while it's on, with what it shows above its name, and red while it's off | This surface goes to page 9 |
+| `7/0/2` | Cafe | Opens the Cafe TV's page. Green while it's on, with what it shows above its name, and red while it's off | This surface goes to page 10 |
+| `7/0/3` | Entry Hall | Opens the Entry Hall TV's page. Green while it's on, with what it shows above its name, and red while it's off | This surface goes to page 11 |
+| `7/1/0` | Kitchen | Opens the Kitchen TV's page. Green while it's on, with what it shows above its name, and red while it's off | This surface goes to page 12 |
+| `7/1/1` | Meeting Room | Opens the Meeting Room TV's page. Green while it's on, with what it shows above its name, and red while it's off | This surface goes to page 13 |
+| `7/1/2` | Back Stage | Opens the Back Stage TV's page. Green while it's on, with what it shows above its name, and red while it's off | This surface goes to page 14 |
+| `7/1/3` | Home | Opens Home | This surface goes to page 1 |
+| `7/2/0` | ALL LIGHTS (live) | Touch strip: the All Lights level, Off, or iPad | Nothing |
+| `7/2/1` | LINEAR (live) | Touch strip: the linear lights level | Nothing |
+| `7/2/2` | What is playing and its volume from normal (live) | Touch strip: what is playing, and its volume from normal, or Off | Nothing |
+| `7/2/3` | MICS (live) | Touch strip: the mic level, Muted, or Off while the audio is off | Nothing |
+| `7/3/0` | Dial: All Lights | Turn to dim or brighten every light, 5% a click, more when turned quickly. Push to turn the lights off or back on | Push:<br>&nbsp;&nbsp;Run `22/0/4` Lights On/Off<br>Turn left:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `all-`<br>&nbsp;&nbsp;Run `22/1/5` All Down<br>Turn right:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `all+`<br>&nbsp;&nbsp;Run `22/1/4` All Up |
+| `7/3/1` | Dial: Linear | Turn to set just the linear lights, 5% a click, more when turned quickly. Push to put them back to the look | Push:<br>&nbsp;&nbsp;Run `22/2/0` Linear Reset<br>Turn left:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `lin-`<br>&nbsp;&nbsp;Run `22/1/7` Linear Down<br>Turn right:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `lin+`<br>&nbsp;&nbsp;Run `22/1/6` Linear Up |
+| `7/3/2` | Dial: Volume | Turn for the volume of whatever is playing, 1 dB a click, more when turned quickly: the auditorium feed, music, Bluetooth or the lobby stage. Push to put it back to normal. Does nothing while the audio is off or nothing plays | Push:<br>&nbsp;&nbsp;Run `22/2/7` Volume Reset<br>Turn left:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `vol-`<br>&nbsp;&nbsp;Run `22/2/2` Volume Down<br>Turn right:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `vol+`<br>&nbsp;&nbsp;Run `22/2/1` Volume Up |
+| `7/3/3` | Dial: Mics | Turn for mic volume, 1 dB a click, more when turned quickly, up to 0 dB. Push to mute or unmute the mics. Does nothing while the audio is off | Push:<br>&nbsp;&nbsp;Run `22/2/5` Mic Mute<br>Turn left:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `mic-`<br>&nbsp;&nbsp;Run `22/2/4` Mic Down<br>Turn right:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `mic+`<br>&nbsp;&nbsp;Run `22/2/3` Mic Up |
+
+### Pages 8 to 14: each TV
+
+Each TV has a page like this one, shown for the first TV. The first key names the TV and switches it, green and saying Turn Off while it's on, red and saying Turn On while it's off. The next five choose what it shows, turning it on if it's off, and the one it shows is lit. Back returns to TVs.
+
+| Page | TV | Variable | Shows when it comes on |
+| --- | --- | --- | --- |
+| 8 | Main Lobby | `tv1_src` | Announcements |
+| 9 | Right Lobby | `tv2_src` | Announcements |
+| 10 | Cafe | `tv3_src` | Announcements |
+| 11 | Entry Hall | `tv4_src` | Announcements |
+| 12 | Kitchen | `tv5_src` | Stream |
+| 13 | Meeting Room | `tv6_src` | Announcements |
+| 14 | Back Stage | `tv7_src` | Stream |
+
+| Key | Shows | Does | What runs behind it |
+| --- | --- | --- | --- |
+| `8/0/0` | Turn Off | Names the TV. Green while it's on, saying Turn Off: press to turn it off. Red while it's off, saying Turn On: press to turn it on showing Announcements | If the Main Lobby TV is on:<br>&nbsp;&nbsp;Run `25/0/2` TV1 Off<br>Otherwise:<br>&nbsp;&nbsp;Run `25/0/1` TV1 On |
+| `8/0/1` | Stream | Shows the live stream on the Main Lobby TV, turning it on if it's off. Lit while it shows | Run `25/1/0` TV1 Stream |
+| `8/0/2` | Announcements | Shows the announcement slides on the Main Lobby TV, turning it on if it's off. Lit while it shows | Run `25/1/1` TV1 Announcements |
+| `8/0/3` | Custom | Shows the custom global signal on the Main Lobby TV, turning it on if it's off. Lit while it shows | Run `25/1/2` TV1 Custom |
+| `8/1/0` | SDI | Shows another ATEM source on the Main Lobby TV, turning it on if it's off. Lit while it shows | Run `25/1/3` TV1 SDI |
+| `8/1/1` | USB | Shows the USB stick in the TV on the Main Lobby TV, turning it on if it's off. Lit while it shows | Run `25/1/4` TV1 USB |
+| `8/1/2` | Local HDMI | Shows the HDMI input at the TV on the Main Lobby TV, turning it on if it's off. Lit while it shows | Run `25/1/5` TV1 Local HDMI |
+| `8/1/3` | Back | Opens TVs, whose last key is Home | This surface goes to page 7 |
+| `8/2/0` | ALL LIGHTS (live) | Touch strip: the All Lights level, Off, or iPad | Nothing |
+| `8/2/1` | LINEAR (live) | Touch strip: the linear lights level | Nothing |
+| `8/2/2` | What is playing and its volume from normal (live) | Touch strip: what is playing, and its volume from normal, or Off | Nothing |
+| `8/2/3` | MICS (live) | Touch strip: the mic level, Muted, or Off while the audio is off | Nothing |
+| `8/3/0` | Dial: All Lights | Turn to dim or brighten every light, 5% a click, more when turned quickly. Push to turn the lights off or back on | Push:<br>&nbsp;&nbsp;Run `22/0/4` Lights On/Off<br>Turn left:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `all-`<br>&nbsp;&nbsp;Run `22/1/5` All Down<br>Turn right:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `all+`<br>&nbsp;&nbsp;Run `22/1/4` All Up |
+| `8/3/1` | Dial: Linear | Turn to set just the linear lights, 5% a click, more when turned quickly. Push to put them back to the look | Push:<br>&nbsp;&nbsp;Run `22/2/0` Linear Reset<br>Turn left:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `lin-`<br>&nbsp;&nbsp;Run `22/1/7` Linear Down<br>Turn right:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `lin+`<br>&nbsp;&nbsp;Run `22/1/6` Linear Up |
+| `8/3/2` | Dial: Volume | Turn for the volume of whatever is playing, 1 dB a click, more when turned quickly: the auditorium feed, music, Bluetooth or the lobby stage. Push to put it back to normal. Does nothing while the audio is off or nothing plays | Push:<br>&nbsp;&nbsp;Run `22/2/7` Volume Reset<br>Turn left:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `vol-`<br>&nbsp;&nbsp;Run `22/2/2` Volume Down<br>Turn right:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `vol+`<br>&nbsp;&nbsp;Run `22/2/1` Volume Up |
+| `8/3/3` | Dial: Mics | Turn for mic volume, 1 dB a click, more when turned quickly, up to 0 dB. Push to mute or unmute the mics. Does nothing while the audio is off | Push:<br>&nbsp;&nbsp;Run `22/2/5` Mic Mute<br>Turn left:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `mic-`<br>&nbsp;&nbsp;Run `22/2/4` Mic Down<br>Turn right:<br>&nbsp;&nbsp;Set `turn_n` from how fast the dial turned (see Dial speed)<br>&nbsp;&nbsp;Set `turn_ms` to `unixNow()`<br>&nbsp;&nbsp;Set `turn_key` to `mic+`<br>&nbsp;&nbsp;Run `22/2/3` Mic Up |
+
 ## Audio power
 
-A Furman sequencer powers the amplifiers. Companion switches it through a network relay, a Shelly Pro 1, whose contact is wired to the Furman's remote terminals. Closing the contact sequences the amplifiers on, and opening it sequences them off. The Wing Rack, the WiiM and the Bluetooth receiver stay on all the time, so Companion can always reach them and a source plays as soon as the amplifiers are up. [Audio setup](06-audio-setup.md#amplifier-power) has the wiring.
+A Juice Goose iP-1520 powers the rack's switchable gear, the amplifiers among them, and Kasa smart plugs power the powered speakers. Turning on, the Juice Goose sequences its three outlet pods on, 1 to 3, 1 s apart, and 2.5 s later the speaker plugs turn on. Turning off, the speaker plugs go first, then a second later the Juice Goose sequences the pods off, 3 to 1. The Wing Rack, the WiiM and the Bluetooth receiver stay on all the time, so Companion can always reach them and a source plays as soon as the amplifiers are up. [Audio setup](06-audio-setup.md#audio-power) has the wiring.
 
-`audio_power` holds the state: 1 while the system is on, 0 while it is off. Two blocks change it, `21/3/0` Power On and `21/3/1` Power Off, and only they talk to the relay.
+`audio_power` holds the state: 1 while the system is on, 0 while it is off. Two blocks change it, `21/3/0` Power On and `21/3/1` Power Off, and only they talk to the Juice Goose and the plugs.
 
 | Key | While the audio is off | While it's on |
 | --- | --- | --- |
@@ -201,7 +260,36 @@ A Furman sequencer powers the amplifiers. Companion switches it through a networ
 
 Only Auditorium, Music, Bluetooth and Lobby Stage toggle. A playlist key chooses what plays, so pressing it again keeps playing. On Audio Zones, the switch turns the picked zone off, and the system stays on.
 
-Five seconds after Companion starts, the startup trigger sends the relay the state in `audio_power`, so the two always agree. To use a different power switch, such as Furman's own BB-RS232 adapter, change only those two blocks and that trigger.
+Five seconds after Companion starts, the startup trigger sends the Juice Goose and the plugs the state in `audio_power`, so they always agree. To use a different power switch, change only those two blocks and that trigger. To add a powered speaker, add its plug to `SPEAKER_PLUGS` in build.py.
+
+## TVs
+
+Each of the 7 TVs keeps its state in one variable, `tv1_src` to `tv7_src`: what it shows, or Off. It can show the live stream (Stream), the announcement slides (Announcements), the custom global signal (Custom), another ATEM source (SDI), the USB stick in the TV (USB) or the HDMI input at the TV (Local HDMI). A TV that comes on shows its default, from this table, rather than what it showed last, so it's always predictable. Choosing what a TV shows turns it on.
+
+| TV | Default | Connection | ATEM output | Its rows in the Library |
+| --- | --- | --- | --- | --- |
+| Main Lobby | Announcements | `tv1`, 192.168.50.81 | 18 | `25/0` and `25/1` |
+| Right Lobby | Announcements | `tv2`, 192.168.50.82 | 19 | `25/2` and `25/3` |
+| Cafe | Announcements | `tv3`, 192.168.50.83 | 20 | `26/0` and `26/1` |
+| Entry Hall | Announcements | `tv4`, 192.168.50.84 | 21 | `26/2` and `26/3` |
+| Kitchen | Stream | `tv5`, 192.168.50.85 | 22 | `27/0` and `27/1` |
+| Meeting Room | Announcements | `tv6`, 192.168.50.86 | 23 | `27/2` and `27/3` |
+| Back Stage | Stream | `tv7`, 192.168.50.87 | 24 | `28/0` and `28/1` |
+
+Every block that changes a TV sets its variable, then runs that TV's Send block, the first on its first row. The second row has a Show block for each thing it can show. Only the Send blocks talk to the TVs and the ATEM. Off turns the TV off. Anything else turns it on, and then:
+
+| It shows | The ATEM | The TV |
+| --- | --- | --- |
+| Stream | The TV's output takes the source in `atem_stream`, 10010 to start with: M/E 1 Program | HDMI 1 |
+| Announcements | The TV's output takes the source in `atem_announcements`, 20 to start with: Input 20 | HDMI 1 |
+| Custom | The TV's output takes the source in `atem_custom`, 19 to start with: Input 19 | HDMI 1 |
+| SDI | The TV's output takes the source in `atem_sdi`, 0 to start with: Black, a placeholder until its input is chosen | HDMI 1 |
+| Local HDMI | Nothing | HDMI 2, the wall plate beside it |
+| USB | Nothing | Nothing. Simple IP control has no USB input, so someone picks the USB player with the TV's remote |
+
+3 s later, each Send block sends the picture again, because a TV that was off may ignore an input change while it wakes. The source numbers are custom variables, so a technician can change them in Companion without touching a block. An ATEM numbers its inputs from 1, and 10010 is M/E 1 Program, 10020 M/E 2 Program, and so on. [TVs](15-tvs.md) has the settings each TV needs, and the TV sheet, [config/network/tvs.csv](../config/network/tvs.csv), lists each TV's address, model and cabling.
+
+Turn TVs On, on More, turns on every TV that's off with its default. Turn TVs Off turns them all off. The night schedule turns every TV off with the lights and the audio, and the startup trigger sends every TV its state again.
 
 ## Dial speed
 
@@ -232,14 +320,14 @@ k = $(custom:light_mode) == 'ipad' ? 0 : $(custom:lt_all) / 100;
 
 | Channels | Level | Full value | What they are |
 | --- | --- | --- | --- |
-| 1-8 | `lt_linear` | 255 | Linear house lights, through 0-10V decoders |
-| 9-12 | `lt_cafe` | 255 | Cafe, placeholder channels until the fixtures are patched |
-| 13-16 | `lt_chandeliers` | 255 | Chandeliers, placeholder channels until the fixtures are patched |
-| 17-20 | `lt_entry_hall` | 255 | Entry Hall, placeholder channels until the fixtures are patched |
-| 21-24 | `lt_sconces` | 255 | Sconces, placeholder channels until the fixtures are patched |
-| 25-28 | `lt_soffit` | 255 | Soffit, placeholder channels until the fixtures are patched |
-| 29-30 | `lt_fireplace` | 255 | Fireplace, placeholder channels until the fixtures are patched |
-| 31-32 | `lt_outside` | 255 | Outside, placeholder channels until the fixtures are patched |
+| 1-8 | `lt_linear` | 255 | Linear house lights, on the ETC UFMP8 0-10V zones |
+| 9-12 | `lt_cafe` | 255 | Cafe, placeholder channels until its outputs are assigned on the patch sheet |
+| 13-16 | `lt_chandeliers` | 255 | Chandeliers, placeholder channels until its outputs are assigned on the patch sheet |
+| 17-20 | `lt_entry_hall` | 255 | Entry Hall, placeholder channels until its outputs are assigned on the patch sheet |
+| 21-24 | `lt_sconces` | 255 | Sconces, placeholder channels until its outputs are assigned on the patch sheet |
+| 25-28 | `lt_soffit` | 255 | Soffit, placeholder channels until its outputs are assigned on the patch sheet |
+| 29-30 | `lt_fireplace` | 255 | Fireplace, placeholder channels until its outputs are assigned on the patch sheet |
+| 31-32 | `lt_outside` | 255 | Outside, placeholder channels until its outputs are assigned on the patch sheet |
 
 These channels are placeholders until the DMX patch sheet exists. To change the patch, edit `22/1/0` in Companion, or `LIGHT_GROUPS` in build.py before the first import. A fixture with a color mix that never changes can put those channels in `STATIC_CHANNELS`.
 
@@ -298,8 +386,8 @@ No surface shows these pages. Keep them where they are, because every real key p
 | `21/2/3` | Room Lobby Stage | Sets all five zones and their normal levels, and turns the audio system on | Run `21/3/0` Power On<br>Run `20/0/3` Z1 Lobby Stage<br>Run `20/1/4` Z2 Off<br>Run `20/2/4` Z3 Off<br>Run `20/3/3` Z4 Lobby Stage<br>Run `21/0/3` Z5 Lobby Stage<br>Run `21/0/5` Default Levels<br>Wait 0.2 s<br>Run `21/1/0` Music Stop |
 | `21/2/4` | Room Bluetooth | Sets all five zones and their normal levels, and turns the audio system on | Run `21/3/0` Power On<br>Run `20/0/2` Z1 Bluetooth<br>Run `20/1/4` Z2 Off<br>Run `20/2/4` Z3 Off<br>Run `20/3/2` Z4 Bluetooth<br>Run `21/0/2` Z5 Bluetooth<br>Run `21/0/5` Default Levels<br>Wait 0.2 s<br>Run `21/1/0` Music Stop |
 | `21/2/5` | Room All Audio Off | Sets all five zones and their normal levels. It leaves the amplifiers as they are | Run `20/0/4` Z1 Off<br>Run `20/1/4` Z2 Off<br>Run `20/2/4` Z3 Off<br>Run `20/3/4` Z4 Off<br>Run `21/0/4` Z5 Off<br>Run `21/0/5` Default Levels<br>Wait 0.2 s<br>Run `21/1/0` Music Stop |
-| `21/3/0` | Power On | Turns the audio system on: the relay closes and the Furman sequences the amplifiers on | Set `audio_power` to `1`<br>Relay closes: the Furman sequences the amplifiers on |
-| `21/3/1` | Power Off | Turns every zone off and stops the music, then opens the relay so the Furman sequences the amplifiers off | Run `21/2/5` Room All Audio Off<br>Wait 0.5 s<br>Set `audio_power` to `0`<br>Relay opens: the Furman sequences the amplifiers off |
+| `21/3/0` | Power On | Turns the audio system on: the Juice Goose sequences its outlets on, amplifiers last, then the powered speakers' plugs turn on | Set `audio_power` to `1`<br>Juice Goose `DEACTIVATE`: its front switch can't override Companion<br>Juice Goose `SEQUP1`: pods 1 to 3 come on 1 s apart<br>Wait 2.5 s<br>Speaker plug `speaker1` turns on<br>Speaker plug `speaker2` turns on |
+| `21/3/1` | Power Off | Turns every zone off and stops the music, then the powered speakers' plugs, then the Juice Goose sequences its outlets off, amplifiers first | Run `21/2/5` Room All Audio Off<br>Wait 0.5 s<br>Set `audio_power` to `0`<br>Speaker plug `speaker1` turns off<br>Speaker plug `speaker2` turns off<br>Wait 1 s<br>Juice Goose `DEACTIVATE`: its front switch can't override Companion<br>Juice Goose `SEQDOWN1`: pods 3 to 1 go off 1 s apart |
 | `21/3/2` | Stop Auditorium | Turns off every zone playing Auditorium, and leaves the other zones and the amplifiers alone | If Lobby is on Auditorium:<br>&nbsp;&nbsp;Run `20/0/4` Z1 Off<br>If Main Entry is on Auditorium:<br>&nbsp;&nbsp;Run `20/1/4` Z2 Off<br>If North Entry is on Auditorium:<br>&nbsp;&nbsp;Run `20/2/4` Z3 Off<br>If Bathrooms is on Auditorium:<br>&nbsp;&nbsp;Run `20/3/4` Z4 Off<br>If Vestibule is on Auditorium:<br>&nbsp;&nbsp;Run `21/0/4` Z5 Off |
 | `21/3/3` | Stop Playlist | Turns off every zone playing Playlist, and leaves the other zones and the amplifiers alone | If Lobby is on Playlist:<br>&nbsp;&nbsp;Run `20/0/4` Z1 Off<br>If Main Entry is on Playlist:<br>&nbsp;&nbsp;Run `20/1/4` Z2 Off<br>If North Entry is on Playlist:<br>&nbsp;&nbsp;Run `20/2/4` Z3 Off<br>If Bathrooms is on Playlist:<br>&nbsp;&nbsp;Run `20/3/4` Z4 Off<br>If Vestibule is on Playlist:<br>&nbsp;&nbsp;Run `21/0/4` Z5 Off<br>Wait 0.2 s<br>Run `21/1/0` Music Stop |
 | `21/3/4` | Stop Bluetooth | Turns off every zone playing Bluetooth, and leaves the other zones and the amplifiers alone | If Lobby is on Bluetooth:<br>&nbsp;&nbsp;Run `20/0/4` Z1 Off<br>If Main Entry is on Bluetooth:<br>&nbsp;&nbsp;Run `20/1/4` Z2 Off<br>If North Entry is on Bluetooth:<br>&nbsp;&nbsp;Run `20/2/4` Z3 Off<br>If Bathrooms is on Bluetooth:<br>&nbsp;&nbsp;Run `20/3/4` Z4 Off<br>If Vestibule is on Bluetooth:<br>&nbsp;&nbsp;Run `21/0/4` Z5 Off |
@@ -331,7 +419,7 @@ No surface shows these pages. Keep them where they are, because every real key p
 | `22/2/3` | Mic Up | Raises the mic bus by 1 dB for each step in `turn_n`, stopping at 0 dB. Only while the audio is on | If the audio system is on:<br>&nbsp;&nbsp;If `($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) < 0`:<br>&nbsp;&nbsp;&nbsp;&nbsp;Set `mic_level` to `min(0, ($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) + $(custom:turn_n))`<br>&nbsp;&nbsp;&nbsp;&nbsp;Wing `/bus/13/fdr` moves by the same amount |
 | `22/2/4` | Mic Down | Lowers the mic bus by 1 dB for each step in `turn_n`, stopping at -60 dB. Only while the audio is on | If the audio system is on:<br>&nbsp;&nbsp;If `($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) > -60`:<br>&nbsp;&nbsp;&nbsp;&nbsp;Set `mic_level` to `max(-60, ($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - $(custom:turn_n))`<br>&nbsp;&nbsp;&nbsp;&nbsp;Wing `/bus/13/fdr` moves by the same amount |
 | `22/2/5` | Mic Mute | Mutes or unmutes the mic bus. Only while the audio is on | If the audio system is on:<br>&nbsp;&nbsp;If `(isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1`:<br>&nbsp;&nbsp;&nbsp;&nbsp;Wing `/bus/13/mute` = 0<br>&nbsp;&nbsp;&nbsp;&nbsp;Set `mic_muted` to `0`<br>&nbsp;&nbsp;Otherwise:<br>&nbsp;&nbsp;&nbsp;&nbsp;Wing `/bus/13/mute` = 1<br>&nbsp;&nbsp;&nbsp;&nbsp;Set `mic_muted` to `1` |
-| `22/2/6` | Close Up | Leaves iPad Mode, then turns off the lights and the audio system. The night schedule runs it | Set `light_mode` to `deck`<br>Wait 0.02 s<br>Run `22/0/3` Lights Off<br>Run `21/3/1` Power Off |
+| `22/2/6` | Close Up | Leaves iPad Mode, then turns off the lights, every TV and the audio system. The night schedule runs it | Set `light_mode` to `deck`<br>Wait 0.02 s<br>Run `22/0/3` Lights Off<br>Run `28/2/1` All TVs Off<br>Run `21/3/1` Power Off |
 | `22/2/7` | Volume Reset | Puts whatever is playing back to its normal level, -20 dB | If `($(custom:audio_power) == 1 ? ($(custom:z1_src) != 'Off' ? $(custom:z1_src) : ($(custom:z2_src) != 'Off' ? $(custom:z2_src) : ($(custom:z3_src) != 'Off' ? $(custom:z3_src) : ($(custom:z4_src) != 'Off' ? $(custom:z4_src) : ($(custom:z5_src) != 'Off' ? $(custom:z5_src) : ('Off')))))) : 'Off') == 'Auditorium'`:<br>&nbsp;&nbsp;Wing `/bus/14/fdr` = -20 dB<br>&nbsp;&nbsp;Set `aud_level` to `-20`<br>If `($(custom:audio_power) == 1 ? ($(custom:z1_src) != 'Off' ? $(custom:z1_src) : ($(custom:z2_src) != 'Off' ? $(custom:z2_src) : ($(custom:z3_src) != 'Off' ? $(custom:z3_src) : ($(custom:z4_src) != 'Off' ? $(custom:z4_src) : ($(custom:z5_src) != 'Off' ? $(custom:z5_src) : ('Off')))))) : 'Off') == 'Playlist'`:<br>&nbsp;&nbsp;Wing `/bus/15/fdr` = -20 dB<br>&nbsp;&nbsp;Set `music_level` to `-20`<br>If `($(custom:audio_power) == 1 ? ($(custom:z1_src) != 'Off' ? $(custom:z1_src) : ($(custom:z2_src) != 'Off' ? $(custom:z2_src) : ($(custom:z3_src) != 'Off' ? $(custom:z3_src) : ($(custom:z4_src) != 'Off' ? $(custom:z4_src) : ($(custom:z5_src) != 'Off' ? $(custom:z5_src) : ('Off')))))) : 'Off') == 'Bluetooth'`:<br>&nbsp;&nbsp;Wing `/bus/16/fdr` = -20 dB<br>&nbsp;&nbsp;Set `bt_level` to `-20`<br>If `($(custom:audio_power) == 1 ? ($(custom:z1_src) != 'Off' ? $(custom:z1_src) : ($(custom:z2_src) != 'Off' ? $(custom:z2_src) : ($(custom:z3_src) != 'Off' ? $(custom:z3_src) : ($(custom:z4_src) != 'Off' ? $(custom:z4_src) : ($(custom:z5_src) != 'Off' ? $(custom:z5_src) : ('Off')))))) : 'Off') == 'Lobby Stage'`:<br>&nbsp;&nbsp;Wing `/main/1/fdr` = -20 dB<br>&nbsp;&nbsp;Set `lobby_level` to `-20` |
 
 ### Page 23: Light areas
@@ -385,11 +473,59 @@ No surface shows these pages. Keep them where they are, because every real key p
 | `24/3/1` | Bluetooth Down | Lowers Bluetooth by 1 dB for each step in `turn_n`, inside -60 to 6 dB, whether or not it is playing. Only while the audio is on | If the audio system is on:<br>&nbsp;&nbsp;If `($(wing:bus16_level) == '-oo' ? -90 : (isNumber($(wing:bus16_level)) ? $(wing:bus16_level) : $(custom:bt_level))) > -60`:<br>&nbsp;&nbsp;&nbsp;&nbsp;Set `bt_level` to `max(-60, ($(wing:bus16_level) == '-oo' ? -90 : (isNumber($(wing:bus16_level)) ? $(wing:bus16_level) : $(custom:bt_level))) - $(custom:turn_n))`<br>&nbsp;&nbsp;&nbsp;&nbsp;Wing `/bus/16/fdr` moves by the same amount |
 | `24/3/2` | Bluetooth Reset | Puts Bluetooth back to its normal level, -20 dB. Only while the audio is on | If the audio system is on:<br>&nbsp;&nbsp;Wing `/bus/16/fdr` = -20 dB<br>&nbsp;&nbsp;Set `bt_level` to `-20` |
 
+### Page 25: TVs 1 to 4
+
+A row for each TV: Send, On, Off, then a block for each thing it can show.
+
+| Key | Block | Does | Sends |
+| --- | --- | --- | --- |
+| `25/0/0` | TV1 Send | Sends the Main Lobby TV what `tv1_src` says. Off turns it off. Anything else turns it on: Stream, Announcements and Custom set ATEM output 18 to that source and the TV to HDMI 1, and Local HDMI sets the TV to HDMI 2. 3 s later it sends the picture again, for a TV that was waking up. USB only turns it on: Simple IP control has no USB input | If the Main Lobby TV is off:<br>&nbsp;&nbsp;TV `tv1` turns off<br>Otherwise:<br>&nbsp;&nbsp;TV `tv1` turns on<br>&nbsp;&nbsp;If the Main Lobby TV shows Local HDMI:<br>&nbsp;&nbsp;&nbsp;&nbsp;TV `tv1` switches to HDMI 2<br>&nbsp;&nbsp;Otherwise:<br>&nbsp;&nbsp;&nbsp;&nbsp;If the Main Lobby TV shows Stream, Announcements, Custom or SDI:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ATEM output 18 takes the source in `atem_stream`, `atem_announcements`, `atem_custom` or `atem_sdi`, for what `tv1_src` says<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TV `tv1` switches to HDMI 1<br>&nbsp;&nbsp;Wait 3 s<br>&nbsp;&nbsp;If the Main Lobby TV shows Local HDMI:<br>&nbsp;&nbsp;&nbsp;&nbsp;TV `tv1` switches to HDMI 2<br>&nbsp;&nbsp;Otherwise:<br>&nbsp;&nbsp;&nbsp;&nbsp;If the Main Lobby TV shows Stream, Announcements, Custom or SDI:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ATEM output 18 takes the source in `atem_stream`, `atem_announcements`, `atem_custom` or `atem_sdi`, for what `tv1_src` says<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TV `tv1` switches to HDMI 1 |
+| `25/0/1` | TV1 On | Turns the Main Lobby TV on showing its default, the announcement slides. To change the default, point this at another Show block on the same row | Run `25/1/1` TV1 Announcements |
+| `25/0/2` | TV1 Off | Turns the Main Lobby TV off | Set `tv1_src` to `Off`<br>Wait 0.02 s<br>Run `25/0/0` TV1 Send |
+| `25/1/0` | TV1 Stream | The Main Lobby TV shows the live stream, turning on if it's off | Set `tv1_src` to `Stream`<br>Wait 0.02 s<br>Run `25/0/0` TV1 Send |
+| `25/1/1` | TV1 Announcements | The Main Lobby TV shows the announcement slides, turning on if it's off | Set `tv1_src` to `Announcements`<br>Wait 0.02 s<br>Run `25/0/0` TV1 Send |
+| `25/1/2` | TV1 Custom | The Main Lobby TV shows the custom global signal, turning on if it's off | Set `tv1_src` to `Custom`<br>Wait 0.02 s<br>Run `25/0/0` TV1 Send |
+| `25/1/3` | TV1 SDI | The Main Lobby TV shows another ATEM source, turning on if it's off | Set `tv1_src` to `SDI`<br>Wait 0.02 s<br>Run `25/0/0` TV1 Send |
+| `25/1/4` | TV1 USB | The Main Lobby TV shows the USB stick in the TV, turning on if it's off | Set `tv1_src` to `USB`<br>Wait 0.02 s<br>Run `25/0/0` TV1 Send |
+| `25/1/5` | TV1 Local HDMI | The Main Lobby TV shows the HDMI input at the TV, turning on if it's off | Set `tv1_src` to `Local HDMI`<br>Wait 0.02 s<br>Run `25/0/0` TV1 Send |
+| `25/2/0` | TV2 Send | Sends the Right Lobby TV what `tv2_src` says. Off turns it off. Anything else turns it on: Stream, Announcements and Custom set ATEM output 19 to that source and the TV to HDMI 1, and Local HDMI sets the TV to HDMI 2. 3 s later it sends the picture again, for a TV that was waking up. USB only turns it on: Simple IP control has no USB input | If the Right Lobby TV is off:<br>&nbsp;&nbsp;TV `tv2` turns off<br>Otherwise:<br>&nbsp;&nbsp;TV `tv2` turns on<br>&nbsp;&nbsp;If the Right Lobby TV shows Local HDMI:<br>&nbsp;&nbsp;&nbsp;&nbsp;TV `tv2` switches to HDMI 2<br>&nbsp;&nbsp;Otherwise:<br>&nbsp;&nbsp;&nbsp;&nbsp;If the Right Lobby TV shows Stream, Announcements, Custom or SDI:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ATEM output 19 takes the source in `atem_stream`, `atem_announcements`, `atem_custom` or `atem_sdi`, for what `tv2_src` says<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TV `tv2` switches to HDMI 1<br>&nbsp;&nbsp;Wait 3 s<br>&nbsp;&nbsp;If the Right Lobby TV shows Local HDMI:<br>&nbsp;&nbsp;&nbsp;&nbsp;TV `tv2` switches to HDMI 2<br>&nbsp;&nbsp;Otherwise:<br>&nbsp;&nbsp;&nbsp;&nbsp;If the Right Lobby TV shows Stream, Announcements, Custom or SDI:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ATEM output 19 takes the source in `atem_stream`, `atem_announcements`, `atem_custom` or `atem_sdi`, for what `tv2_src` says<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TV `tv2` switches to HDMI 1 |
+| `25/2/1` | TV2 On | Turns the Right Lobby TV on showing its default, the announcement slides. To change the default, point this at another Show block on the same row | Run `25/3/1` TV2 Announcements |
+| `25/2/2` | TV2 Off | Turns the Right Lobby TV off | Set `tv2_src` to `Off`<br>Wait 0.02 s<br>Run `25/2/0` TV2 Send |
+| `25/3/0` | TV2 Stream | The Right Lobby TV shows the live stream, turning on if it's off | Set `tv2_src` to `Stream`<br>Wait 0.02 s<br>Run `25/2/0` TV2 Send |
+| `25/3/1` | TV2 Announcements | The Right Lobby TV shows the announcement slides, turning on if it's off | Set `tv2_src` to `Announcements`<br>Wait 0.02 s<br>Run `25/2/0` TV2 Send |
+| `25/3/2` | TV2 Custom | The Right Lobby TV shows the custom global signal, turning on if it's off | Set `tv2_src` to `Custom`<br>Wait 0.02 s<br>Run `25/2/0` TV2 Send |
+| `25/3/3` | TV2 SDI | The Right Lobby TV shows another ATEM source, turning on if it's off | Set `tv2_src` to `SDI`<br>Wait 0.02 s<br>Run `25/2/0` TV2 Send |
+| `25/3/4` | TV2 USB | The Right Lobby TV shows the USB stick in the TV, turning on if it's off | Set `tv2_src` to `USB`<br>Wait 0.02 s<br>Run `25/2/0` TV2 Send |
+| `25/3/5` | TV2 Local HDMI | The Right Lobby TV shows the HDMI input at the TV, turning on if it's off | Set `tv2_src` to `Local HDMI`<br>Wait 0.02 s<br>Run `25/2/0` TV2 Send |
+
+### Page 26: TVs 5 to 7, and every TV
+
+| Key | Block | Does | Sends |
+| --- | --- | --- | --- |
+| `26/0/0` | TV3 Send | Sends the Cafe TV what `tv3_src` says. Off turns it off. Anything else turns it on: Stream, Announcements and Custom set ATEM output 20 to that source and the TV to HDMI 1, and Local HDMI sets the TV to HDMI 2. 3 s later it sends the picture again, for a TV that was waking up. USB only turns it on: Simple IP control has no USB input | If the Cafe TV is off:<br>&nbsp;&nbsp;TV `tv3` turns off<br>Otherwise:<br>&nbsp;&nbsp;TV `tv3` turns on<br>&nbsp;&nbsp;If the Cafe TV shows Local HDMI:<br>&nbsp;&nbsp;&nbsp;&nbsp;TV `tv3` switches to HDMI 2<br>&nbsp;&nbsp;Otherwise:<br>&nbsp;&nbsp;&nbsp;&nbsp;If the Cafe TV shows Stream, Announcements, Custom or SDI:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ATEM output 20 takes the source in `atem_stream`, `atem_announcements`, `atem_custom` or `atem_sdi`, for what `tv3_src` says<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TV `tv3` switches to HDMI 1<br>&nbsp;&nbsp;Wait 3 s<br>&nbsp;&nbsp;If the Cafe TV shows Local HDMI:<br>&nbsp;&nbsp;&nbsp;&nbsp;TV `tv3` switches to HDMI 2<br>&nbsp;&nbsp;Otherwise:<br>&nbsp;&nbsp;&nbsp;&nbsp;If the Cafe TV shows Stream, Announcements, Custom or SDI:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ATEM output 20 takes the source in `atem_stream`, `atem_announcements`, `atem_custom` or `atem_sdi`, for what `tv3_src` says<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TV `tv3` switches to HDMI 1 |
+| `26/0/1` | TV3 On | Turns the Cafe TV on showing its default, the announcement slides. To change the default, point this at another Show block on the same row | Run `26/1/1` TV3 Announcements |
+| `26/0/2` | TV3 Off | Turns the Cafe TV off | Set `tv3_src` to `Off`<br>Wait 0.02 s<br>Run `26/0/0` TV3 Send |
+| `26/1/0` | TV3 Stream | The Cafe TV shows the live stream, turning on if it's off | Set `tv3_src` to `Stream`<br>Wait 0.02 s<br>Run `26/0/0` TV3 Send |
+| `26/1/1` | TV3 Announcements | The Cafe TV shows the announcement slides, turning on if it's off | Set `tv3_src` to `Announcements`<br>Wait 0.02 s<br>Run `26/0/0` TV3 Send |
+| `26/1/2` | TV3 Custom | The Cafe TV shows the custom global signal, turning on if it's off | Set `tv3_src` to `Custom`<br>Wait 0.02 s<br>Run `26/0/0` TV3 Send |
+| `26/1/3` | TV3 SDI | The Cafe TV shows another ATEM source, turning on if it's off | Set `tv3_src` to `SDI`<br>Wait 0.02 s<br>Run `26/0/0` TV3 Send |
+| `26/1/4` | TV3 USB | The Cafe TV shows the USB stick in the TV, turning on if it's off | Set `tv3_src` to `USB`<br>Wait 0.02 s<br>Run `26/0/0` TV3 Send |
+| `26/1/5` | TV3 Local HDMI | The Cafe TV shows the HDMI input at the TV, turning on if it's off | Set `tv3_src` to `Local HDMI`<br>Wait 0.02 s<br>Run `26/0/0` TV3 Send |
+| `26/2/0` | TV4 Send | Sends the Entry Hall TV what `tv4_src` says. Off turns it off. Anything else turns it on: Stream, Announcements and Custom set ATEM output 21 to that source and the TV to HDMI 1, and Local HDMI sets the TV to HDMI 2. 3 s later it sends the picture again, for a TV that was waking up. USB only turns it on: Simple IP control has no USB input | If the Entry Hall TV is off:<br>&nbsp;&nbsp;TV `tv4` turns off<br>Otherwise:<br>&nbsp;&nbsp;TV `tv4` turns on<br>&nbsp;&nbsp;If the Entry Hall TV shows Local HDMI:<br>&nbsp;&nbsp;&nbsp;&nbsp;TV `tv4` switches to HDMI 2<br>&nbsp;&nbsp;Otherwise:<br>&nbsp;&nbsp;&nbsp;&nbsp;If the Entry Hall TV shows Stream, Announcements, Custom or SDI:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ATEM output 21 takes the source in `atem_stream`, `atem_announcements`, `atem_custom` or `atem_sdi`, for what `tv4_src` says<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TV `tv4` switches to HDMI 1<br>&nbsp;&nbsp;Wait 3 s<br>&nbsp;&nbsp;If the Entry Hall TV shows Local HDMI:<br>&nbsp;&nbsp;&nbsp;&nbsp;TV `tv4` switches to HDMI 2<br>&nbsp;&nbsp;Otherwise:<br>&nbsp;&nbsp;&nbsp;&nbsp;If the Entry Hall TV shows Stream, Announcements, Custom or SDI:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ATEM output 21 takes the source in `atem_stream`, `atem_announcements`, `atem_custom` or `atem_sdi`, for what `tv4_src` says<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TV `tv4` switches to HDMI 1 |
+| `26/2/1` | TV4 On | Turns the Entry Hall TV on showing its default, the announcement slides. To change the default, point this at another Show block on the same row | Run `26/3/1` TV4 Announcements |
+| `26/2/2` | TV4 Off | Turns the Entry Hall TV off | Set `tv4_src` to `Off`<br>Wait 0.02 s<br>Run `26/2/0` TV4 Send |
+| `26/3/0` | TV4 Stream | The Entry Hall TV shows the live stream, turning on if it's off | Set `tv4_src` to `Stream`<br>Wait 0.02 s<br>Run `26/2/0` TV4 Send |
+| `26/3/1` | TV4 Announcements | The Entry Hall TV shows the announcement slides, turning on if it's off | Set `tv4_src` to `Announcements`<br>Wait 0.02 s<br>Run `26/2/0` TV4 Send |
+| `26/3/2` | TV4 Custom | The Entry Hall TV shows the custom global signal, turning on if it's off | Set `tv4_src` to `Custom`<br>Wait 0.02 s<br>Run `26/2/0` TV4 Send |
+| `26/3/3` | TV4 SDI | The Entry Hall TV shows another ATEM source, turning on if it's off | Set `tv4_src` to `SDI`<br>Wait 0.02 s<br>Run `26/2/0` TV4 Send |
+| `26/3/4` | TV4 USB | The Entry Hall TV shows the USB stick in the TV, turning on if it's off | Set `tv4_src` to `USB`<br>Wait 0.02 s<br>Run `26/2/0` TV4 Send |
+| `26/3/5` | TV4 Local HDMI | The Entry Hall TV shows the HDMI input at the TV, turning on if it's off | Set `tv4_src` to `Local HDMI`<br>Wait 0.02 s<br>Run `26/2/0` TV4 Send |
+
 ## Triggers
 
 | Trigger | Starts | Does |
 | --- | --- | --- |
-| Startup recovery | On | Five seconds after Companion starts, fades the lights back to where they were, and sends the audio power state to the relay again so they agree. In iPad Mode, it keeps Companion's light output at zero |
+| Startup recovery | On | Five seconds after Companion starts, fades the lights back to where they were, sends every TV its state, and sends the audio power state to the Juice Goose and the speaker plugs again so they agree. In iPad Mode, it keeps Companion's light output at zero |
 | Schedule: Sunday arrival | Off | Off at first. Sunday 7:30: Lights 3 and the auditorium feed, unless iPad Mode is on |
 | Schedule: Weekday open | Off | Off at first. Weekdays 8:00: Lights 2 and music inside, unless iPad Mode is on |
 | Schedule: Night shutdown | Off | Off at first. Nightly 22:00: Close Up, which also leaves iPad Mode so doors can't stay locked |
@@ -461,6 +597,17 @@ All of these keep their value through a restart, except `lt_saved`, `turn_n`, `t
 | `zone_pick` | The zone Audio Zones' dial and switch work on, 1 to 5 | 1 |
 | `audio_last` | The source last played, which a zone turned on from silence plays | Playlist |
 | `audio_power` | 1 while the audio system is on, 0 while the amplifiers are off | 0 |
+| `tv1_src` | What the Main Lobby TV shows, or Off | Off |
+| `tv2_src` | What the Right Lobby TV shows, or Off | Off |
+| `tv3_src` | What the Cafe TV shows, or Off | Off |
+| `tv4_src` | What the Entry Hall TV shows, or Off | Off |
+| `tv5_src` | What the Kitchen TV shows, or Off | Off |
+| `tv6_src` | What the Meeting Room TV shows, or Off | Off |
+| `tv7_src` | What the Back Stage TV shows, or Off | Off |
+| `atem_stream` | ATEM source number the TVs get for Stream, such as 10010 for M/E 1 Program | 10010 |
+| `atem_announcements` | ATEM source number the TVs get for Announcements, such as 10010 for M/E 1 Program | 20 |
+| `atem_custom` | ATEM source number the TVs get for Custom, such as 10010 for M/E 1 Program | 19 |
+| `atem_sdi` | ATEM source number the TVs get for SDI, such as 10010 for M/E 1 Program | 0 |
 | `turn_fast_ms` | Dial clicks closer together than this, in ms, move 4 steps each. 0 turns it off | 50 |
 | `turn_medium_ms` | Dial clicks closer together than this, in ms, move 2 steps each. 0 turns it off | 120 |
 | `turn_n` | Steps for the dial click being handled, worked out from how fast it turned | 1 |
@@ -480,5 +627,10 @@ All of these keep their value through a restart, except `lt_saved`, `turn_n`, `t
 - **Rename an area or a zone.** Change the key's label. Its strip title lives in the third dial's panel on that page.
 - **Add a station.** Add the surface in Companion, give it its own surface group starting on page 1, and untick the pages it shouldn't use. Nothing in the pages changes.
 - **Use a different power switch.** Edit `21/3/0` Power On, `21/3/1` Power Off and the startup trigger. Every key that powers the system goes through those two blocks.
+- **Change what a TV shows when it comes on.** Edit its On block, the second on its first row on pages 25 to 28, to run another Show block on its second row.
+- **Change where Stream, Announcements, Custom or SDI come from.** Set `atem_stream`, `atem_announcements`, `atem_custom` or `atem_sdi` to another ATEM source number on Companion's Variables page. Every TV follows.
+- **Feed a TV from another ATEM output.** Edit the two ATEM actions in its Send block, the first on its first row on pages 25 to 28.
+- **Move a TV to another address.** Change the host of its `tv` connection, and the TV sheet.
+- **Use other TVs.** Replace the `tv` connections, and the TV actions in each Send block. Every key, the schedule and the startup trigger already go through the Send blocks.
 
 After any change, export the configuration from Companion and commit it next to this file. From then on, that export is the live copy and `build.py` is only a record of the first version.

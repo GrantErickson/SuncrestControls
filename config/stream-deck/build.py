@@ -38,8 +38,29 @@ IMAGES = ROOT / "docs" / "images"
 
 # ---------------------------------------------------------------- the system
 WING_IP, ODE_IP, WIIM_IP = "192.168.50.20", "192.168.50.31", "192.168.50.40"
-POWER_IP = "192.168.50.45"  # network relay that closes the Furman sequencer's remote contact, which powers the amps
+POWER_IP = "192.168.50.45"  # Juice Goose iP-1520: sequences the rack's switched outlets, the amplifiers among them
+POWER_PORT = 30333          # the iP-1520's UDP console port. UDP is off until it's enabled on the unit's web page
+SEQ_SECONDS = 1             # seconds between the iP-1520's three outlet pods as it sequences them on or off
+SPEAKER_PLUGS = [  # Companion connection, address: TP-Link Kasa EP10 plugs that power the powered speakers
+    ("speaker1", "192.168.50.46"),
+    ("speaker2", "192.168.50.47"),
+]
+SPEAKERS_AFTER_MS = 2 * SEQ_SECONDS * 1000 + 500  # the speakers come on once the last pod is up
 ARTNET_UNIVERSE = 0
+# The TVs: Sony BRAVIA 3 II, each fed by its own output of the production ATEM, a 4 M/E Constellation HD, through an
+# SDI to HDMI converter. The ATEM is on the production network and always on. Its address is a placeholder, the
+# factory address every ATEM ships with, until the real one is known. config/network/tvs.csv lists the TVs too: keep
+# the two the same
+ATEM_IP = "192.168.10.240"
+ATEM_IP_PLACEHOLDER = True  # set False once ATEM_IP is the real address
+ATEM_MODEL = 20    # the 4 M/E Constellation HD in the ATEM module's list (atem-connection's Model 0x14): 24 outputs
+TV_IP = "192.168.50.8{}"  # TV n is at .8n: .81 to .87
+TV_PORT = 20060    # Sony's Simple IP control: plain TCP, no key. Sony's REST API can require HTTPS on TVs launched
+                   # since August 2025, which the Sony Bravia module can't speak. Simple IP works either way
+TV_ATEM_HDMI = 1   # the TV input the ATEM feeds, through the converter
+TV_LOCAL_HDMI = 2  # the TV input the HDMI wall plate beside it feeds
+TV_WAKE_MS = 3000  # a TV that was off may ignore an input change while it wakes, so its input is sent again this
+                   # long after it's told to come on
 
 ZONES = [  # number, name, matrix, normal fader in dB, icon. Audio Zones shows them in this order
     (1, "Lobby", 1, -6, "lobby"),
@@ -76,8 +97,8 @@ def slug(name):
 
 
 LIGHT_GROUPS = [  # DMX channels, level that drives them, DMX value at 100%, what they are
-    ("1-8", "lt_linear", 255, "Linear house lights, through 0-10V decoders"),
-    *[(channels, f"lt_{slug(name)}", 255, f"{name}, placeholder channels until the fixtures are patched")
+    ("1-8", "lt_linear", 255, "Linear house lights, on the ETC UFMP8 0-10V zones"),
+    *[(channels, f"lt_{slug(name)}", 255, f"{name}, placeholder channels until its outputs are assigned on the patch sheet")
       for _, name, _, channels in LIGHT_AREAS],
 ]
 STATIC_CHANNELS = []  # (DMX channels, value), for channels that never change, like a fixture's mode
@@ -93,6 +114,32 @@ SCENES = [  # name, label on key, icon, source per zone
     ("Bluetooth", "Bluetooth", "bluetooth", ["Bluetooth", "Off", "Off", "Bluetooth", "Bluetooth"]),
     ("All Audio Off", "Audio Off", "mute", ["Off"] * 5),
 ]
+TV_CONTENT = [  # what a TV can show: name and label, icon, and what it is
+    ("Stream", "stream", "the live stream"),
+    ("Announcements", "megaphone", "the announcement slides"),
+    ("Custom", "sparkle", "the custom global signal"),
+    ("SDI", "bnc", "another ATEM source"),
+    ("USB", "usb", "the USB stick in the TV"),
+    ("Local HDMI", "hdmi", "the HDMI input at the TV"),
+]
+TVS = [  # number, name, icon, what it shows when it comes on. The defaults are a proposal until confirmed
+    (1, "Main Lobby", "tv_lobby", "Announcements"),
+    (2, "Right Lobby", "tv_lobby_right", "Announcements"),
+    (3, "Cafe", "tv_cafe", "Announcements"),
+    (4, "Entry Hall", "tv_hall", "Announcements"),
+    (5, "Kitchen", "tv_kitchen", "Stream"),
+    (6, "Meeting Room", "tv_meeting", "Announcements"),
+    (7, "Back Stage", "tv_backstage", "Stream"),
+]
+TV_AUX = {n: 17 + n for n, *_ in TVS}  # the ATEM output feeding each TV. A proposal: the Constellation's last seven
+                                        # of 24, leaving the low numbers to production
+ATEM_SOURCES = {  # what the ATEM sends a TV for each kind of content: the variable that holds its source number, the
+                  # number to start with and what that is (the user, 2026-11-22)
+    "Stream": ("atem_stream", "10010", "M/E 1 Program"),
+    "Announcements": ("atem_announcements", "20", "Input 20"),
+    "Custom": ("atem_custom", "19", "Input 19"),
+    "SDI": ("atem_sdi", "0", "Black, a placeholder until its input is chosen"),
+}
 LIGHT_STEP = 5         # percent per dial step
 TURN_MEDIUM_MS, TURN_FAST_MS = 120, 50  # starting values: clicks closer together than these count as a quicker turn
 TURN_MEDIUM, TURN_FAST = 2, 4           # steps per click when the dial turns at medium or fast speed
@@ -117,6 +164,7 @@ MIC_START = -10                    # Bus 13's level in the Lobby Base snapshot
 ACCENTS = {  # one color per kind of key. Every tile, bar and ring color is worked out from these
     "light": "#ffb52e", "linear": "#f2d49b", "audio": "#4aa8ff", "music": "#a888ff", "mic": "#3fd6c2",
     "off": "#ff6b57", "nav": "#9aa6b5", "ipad": "#c27bff", "save": "#3fd68a", "power": "#38c172",
+    "tv": "#ff4fd8",
 }
 
 
@@ -245,10 +293,81 @@ def dmx_send(ms):
     return action("dmx", "set_complex", upgrade=ARTNET_UPGRADE, params="$(custom:dmx_cmd)", duration=ms)
 
 
-def relay(on):
-    """Closes or opens the relay on the Furman's remote terminals, so it sequences the amplifiers on or off."""
-    return action("power", "get", url=f"rpc/Switch.Set?id=0&on={'true' if on else 'false'}", header="",
-                  jsonResultDataVariable="", result_stringify=True, statusCodeVariable="")
+def goose(command):
+    """One console command to the Juice Goose over UDP. Its manual ends each command with a carriage return."""
+    return action("power", "send", id_send=command, id_end="\r")
+
+
+def rack_power(on):
+    """The Juice Goose sequences its switched pods on, 1 to 3, or off, 3 to 1. DEACTIVATE comes first, because its
+    manual says the front rocker switch otherwise overrides remote commands."""
+    return [goose("DEACTIVATE"), goose(f"SEQ{'UP' if on else 'DOWN'}{SEQ_SECONDS}")]
+
+
+def speakers(on):
+    """Every powered speaker's Kasa plug, on or off."""
+    return [action(conn, "on" if on else "off") for conn, _ in SPEAKER_PLUGS]
+
+
+def power_up():
+    """Rack outlets first, amplifiers last among them, then the powered speakers once everything feeding them is up."""
+    return rack_power(True) + [wait(SPEAKERS_AFTER_MS)] + speakers(True)
+
+
+def power_down():
+    """The reverse: the powered speakers first, then the rack outlets, amplifiers first among them."""
+    return speakers(False) + [wait(1000)] + rack_power(False)
+
+
+ATEM_UPGRADE = 10  # bmd-atem 4.5.0 has eleven. Its expression upgrade renumbers aux outputs, so it must not run on these
+TV_CONNS = {f"tv{n}": n for n, *_ in TVS}
+TV_POWER = {"power_on": "*SCPOWR0000000000000001", "power_off": "*SCPOWR0000000000000000"}
+
+
+def sony(n, command):
+    """One Simple IP control message to TV n: 23 characters and a line feed, 24 bytes in all."""
+    return action(f"tv{n}", "send", id_send=command, id_end="\n")
+
+
+def tv_input(n, port):
+    """HDMI is input type 1, then the port in four digits."""
+    return sony(n, f"*SCINPT00000001{port:08d}")
+
+
+def tv_said(options):
+    """What a Simple IP message tells a TV, in words: power_on, power_off or hdmi<port>. Anything else, or a message
+    that isn't 24 bytes with its line feed, comes back as itself so a check fails."""
+    cmd, end = options["id_send"], options["id_end"]
+    if len(cmd + end) != 24 or end != "\n":
+        return cmd
+    if cmd.startswith("*SCINPT00000001"):
+        return f"hdmi{int(cmd[-8:])}"
+    return {v: k for k, v in TV_POWER.items()}.get(cmd, cmd)
+
+
+def from_atem(n):
+    """True while TV n shows something the ATEM sends it."""
+    return " || ".join(f"$(custom:tv{n}_src) == '{c}'" for c in ATEM_SOURCES)
+
+
+def tv_picture(n):
+    """Sends TV n's picture for what tv<n>_src says: an ATEM source on the ATEM's output to it and the TV on the ATEM's
+    input, or the TV on its local HDMI input. Nothing for Off, or for USB, which waits until it's tried on a TV."""
+    src = f"$(custom:tv{n}_src)"
+    *rest, last = ATEM_SOURCES
+    pick = f"$(custom:{ATEM_SOURCES[last][0]})"
+    for c in reversed(rest):
+        pick = f"{src} == '{c}' ? $(custom:{ATEM_SOURCES[c][0]}) : ({pick})"
+    return when(f"{src} == 'Local HDMI'", [tv_input(n, TV_LOCAL_HDMI)], [
+        when(from_atem(n), [action("atem", "aux", upgrade=ATEM_UPGRADE, aux=TV_AUX[n], input=expr(pick)),
+                         tv_input(n, TV_ATEM_HDMI)])])
+
+
+def tv_send(n):
+    """Everything TV n's Send block does: off, or on and showing what tv<n>_src says, then the picture again once
+    a TV that was off has woken."""
+    return [when(f"$(custom:tv{n}_src) == 'Off'", [sony(n, TV_POWER["power_off"])],
+                 [sony(n, TV_POWER["power_on"]), tv_picture(n), wait(TV_WAKE_MS), tv_picture(n)])]
 
 
 # ---------------------------------------------------------------- expressions
@@ -302,6 +421,11 @@ NONE_PLAYLIST = " && ".join(f"$(custom:z{z}_src) != 'Playlist'" for z, *_ in ZON
 ANY_PLAYLIST = plays("Playlist")
 POWERED = "$(custom:audio_power) == 1"  # the amplifiers are on
 UNPOWERED = f"!({POWERED})"
+TV_SRC = {n: f"$(custom:tv{n}_src)" for n, *_ in TVS}    # what a TV shows, or Off
+TV_ON = {n: f"{TV_SRC[n]} != 'Off'" for n, *_ in TVS}
+TV_OFF = {n: f"{TV_SRC[n]} == 'Off'" for n, *_ in TVS}
+ANY_TV = " || ".join(TV_ON.values())
+TVS_ON_COUNT = " + ".join(f"({TV_ON[n]} ? 1 : 0)" for n, *_ in TVS)
 
 
 def tracked(wing_var, custom):
@@ -422,11 +546,15 @@ class Key:
 
 PAGES = {  # every station is a Stream Deck +, and they all share these pages
     1: ("Home", "deck"), 2: ("More", "deck"), 3: ("Playlists", "deck"), 4: ("Light Control", "deck"),
-    5: ("Audio Source", "deck"), 6: ("Audio Zones", "deck"),
+    5: ("Audio Source", "deck"), 6: ("Audio Zones", "deck"), 7: ("TVs", "deck"),
+    **{7 + n: (f"{name} TV", "deck") for n, name, *_ in TVS},  # pages 8 to 14, one for each TV
     20: ("Library: Zones", "library"), 21: ("Library: Music and Rooms", "library"),
     22: ("Library: Lights and Dials", "library"), 23: ("Library: Light Areas", "library"),
     24: ("Library: Zone Switches and Bluetooth", "library"),
+    25: ("Library: TVs 1 and 2", "library"), 26: ("Library: TVs 3 and 4", "library"),
+    27: ("Library: TVs 5 and 6", "library"), 28: ("Library: TV 7 and All TVs", "library"),
 }
+TV_PAGE = {n: 7 + n for n, *_ in TVS}
 BOUNDS = {"deck": (4, 4), "library": (4, 8)}
 KEYS: dict[str, Key] = {}
 
@@ -468,6 +596,30 @@ ZONE_OFF = {z: f"24/1/{z - 1}" for z, *_ in ZONES}
 ZONE_SWITCH, PICKED_ZONE_UP, PICKED_ZONE_DOWN, PICKED_ZONE_RESET = "24/2/0", "24/2/1", "24/2/2", "24/2/3"
 BT_UP, BT_DOWN, BT_RESET = "24/3/0", "24/3/1", "24/3/2"
 IPAD_KEY = "2/1/0"  # iPad Mode, on More
+TVS_KEY = "2/1/1"   # the switch for every TV, on More
+
+
+TV_LIB_FIRST = 25  # each TV has two rows in the Library, two TVs a page from page 25
+
+
+def tv_rows(n):
+    """The page and first row of TV n's two Library rows."""
+    return TV_LIB_FIRST + (n - 1) // 2, 2 * ((n - 1) % 2)
+
+
+def tv_block(n, col):
+    """Library location of a TV's block. Its first row holds Send, On and Off, columns 0 to 2. Its second holds a
+    Show block for each thing it can show, numbered on from 3."""
+    page, row = tv_rows(n)
+    return f"{page}/{row}/{col}" if col < 3 else f"{page}/{row + 1}/{col - 3}"
+
+
+TV_SEND = {n: tv_block(n, 0) for n, *_ in TVS}
+TV_ON_LOC = {n: tv_block(n, 1) for n, *_ in TVS}
+TV_OFF_LOC = {n: tv_block(n, 2) for n, *_ in TVS}
+TV_SHOW = {n: {c: tv_block(n, 3 + i) for i, (c, *_rest) in enumerate(TV_CONTENT)} for n, *_ in TVS}
+TV_SENT = {loc: n for n, loc in TV_SEND.items()}
+ALL_TVS_ON, ALL_TVS_OFF, TVS_TOGGLE, TVS_RESEND = "28/2/0", "28/2/1", "28/2/2", "28/2/3"
 
 
 def lib(loc, label, down, does):
@@ -535,11 +687,13 @@ def build_library():
             (", and turns the audio system on" if any(z != "Off" for z in zones)
              else ". It leaves the amplifiers as they are"))
     # Row 3 of page 21: amplifier power, and turning one source off
-    lib(POWER_ON, "Power\nOn", [setvar("audio_power", 1), relay(True)],
-        "Turns the audio system on: the relay closes and the Furman sequences the amplifiers on")
-    lib(POWER_OFF, "Power\nOff", [press(SCENE_LOC["All Audio Off"]), wait(500), setvar("audio_power", 0),
-                                  relay(False)],
-        "Turns every zone off and stops the music, then opens the relay so the Furman sequences the amplifiers off")
+    lib(POWER_ON, "Power\nOn", [setvar("audio_power", 1)] + power_up(),
+        "Turns the audio system on: the Juice Goose sequences its outlets on, amplifiers last, then the powered "
+        "speakers' plugs turn on")
+    lib(POWER_OFF, "Power\nOff", [press(SCENE_LOC["All Audio Off"]), wait(500), setvar("audio_power", 0)]
+        + power_down(),
+        "Turns every zone off and stops the music, then the powered speakers' plugs, then the Juice Goose sequences "
+        "its outlets off, amplifiers first")
     for source, _, label, _ in SOURCES:
         acts = [when(f"$(custom:z{z}_src) == '{source}'", [press(zone_block(z, 4))]) for z, *_ in ZONES]
         if source == "Playlist":
@@ -609,8 +763,9 @@ def build_library():
     lib(MIC_MUTE, "Mic\nMute", [when(POWERED, [when(MIC_MUTED, [wing_mute(mic, False), setvar("mic_muted", 0)],
                                                      [wing_mute(mic, True), setvar("mic_muted", 1)])])],
         "Mutes or unmutes the mic bus. Only while the audio is on")
-    lib(CLOSE_UP, "Close\nUp", [setvar("light_mode", "deck"), wait(20), press(LIGHTS_OFF), press(POWER_OFF)],
-        "Leaves iPad Mode, then turns off the lights and the audio system. The night schedule runs it")
+    lib(CLOSE_UP, "Close\nUp", [setvar("light_mode", "deck"), wait(20), press(LIGHTS_OFF), press(ALL_TVS_OFF),
+                                press(POWER_OFF)],
+        "Leaves iPad Mode, then turns off the lights, every TV and the audio system. The night schedule runs it")
 
     # Page 23: each light area, and the picked one, for Light Control's dial
     for n, name, _, _ in LIGHT_AREAS:
@@ -663,6 +818,33 @@ def build_library():
             f"{SRC_MAX} dB, whether or not it is playing. Only while the audio is on")
     lib(BT_RESET, "Bluetooth\nReset", [when(POWERED, [wing_level(bt_sel, SRC_NORMAL), setvar(bt_var, SRC_NORMAL)])],
         f"Puts Bluetooth back to its normal level, {SRC_NORMAL} dB. Only while the audio is on")
+
+    # Pages 25 and 26: a row for each TV, then the blocks for every TV. A TV's state lives in tv<n>_src, and
+    # only its Send block talks to the TV and the video system
+    content_noun = {c: what for c, _, what in TV_CONTENT}
+    for n, name, _, default in TVS:
+        lib(TV_SEND[n], f"TV{n}\nSend", tv_send(n),
+            f"Sends the {name} TV what `tv{n}_src` says. Off turns it off. Anything else turns it on: Stream, "
+            f"Announcements and Custom set ATEM output {TV_AUX[n]} to that source and the TV to HDMI {TV_ATEM_HDMI}, "
+            f"and Local HDMI sets the TV to HDMI {TV_LOCAL_HDMI}. {TV_WAKE_MS / 1000:g} s later it sends the picture "
+            "again, for a TV that was waking up. USB only turns it on: Simple IP control has no USB input")
+        lib(TV_ON_LOC[n], f"TV{n}\nOn", [press(TV_SHOW[n][default])],
+            f"Turns the {name} TV on showing its default, {content_noun[default]}. To change the default, point "
+            "this at another Show block on the same row")
+        lib(TV_OFF_LOC[n], f"TV{n}\nOff", [setvar(f"tv{n}_src", "Off"), wait(20), press(TV_SEND[n])],
+            f"Turns the {name} TV off")
+        for content, _, what in TV_CONTENT:
+            lib(TV_SHOW[n][content], f"TV{n}\n{content}",
+                [setvar(f"tv{n}_src", content), wait(20), press(TV_SEND[n])],
+                f"The {name} TV shows {what}, turning on if it's off")
+    lib(ALL_TVS_ON, "All TVs\nOn", [when(TV_OFF[n], [press(TV_ON_LOC[n])]) for n, *_ in TVS],
+        "Turns on every TV that's off, each showing its default. TVs already on keep what they show")
+    lib(ALL_TVS_OFF, "All TVs\nOff", [press(TV_OFF_LOC[n]) for n, *_ in TVS],
+        "Turns every TV off, including any Companion already thinks is off")
+    lib(TVS_TOGGLE, "TVs\nOn/Off", [when(ANY_TV, [press(ALL_TVS_OFF)], [press(ALL_TVS_ON)])],
+        "Turns every TV off if any is on, or every TV on if they're all off")
+    lib(TVS_RESEND, "TVs\nResend", [press(TV_SEND[n]) for n, *_ in TVS],
+        "Sends every TV its state again, so the TVs agree with Companion. The startup trigger runs it")
 
 
 # ---------------------------------------------------------------- displays
@@ -891,6 +1073,43 @@ def ipad_key(page, r, c):
         hold=(IPAD_HOLD_MS, [press(IPAD_TOGGLE)]), fb=[(IPAD, "active")])
 
 
+def tvs_power_key(page, r, c):
+    """Every TV at once. Like the audio power key, its color shows the state and its label says what a press does.
+    While only some TVs are on, it says how many."""
+    count = f"n = {TVS_ON_COUNT};\nn > 0 && n < {len(TVS)} ? " + tmpl(X("n"), f" of {len(TVS)} on") + " : ''"
+    add(page, r, c, label="Turn TVs Off", icon="tv_power", cat="off", sub=count,
+        fb=[(ANY_TV, "on"), (f"!({ANY_TV})", "active")], labels={"active": "Turn TVs On"},
+        down=[press(TVS_TOGGLE)],
+        does="Green while any TV is on, saying Turn TVs Off, and how many are on if not all: press to turn every TV "
+             "off. Red while they're all off, saying Turn TVs On: press to turn every TV on, each showing its default")
+
+
+def tv_key(page, r, c, tv):
+    """A TV on the TVs page. Green while it's on, with what it shows above its name, and red while it's off."""
+    n, name, icon, _ = tv
+    add(page, r, c, label=name, icon=icon, cat="off", down=[setpage(TV_PAGE[n])], sub=TV_SRC[n],
+        fb=[(TV_ON[n], "on"), (TV_OFF[n], "active")],
+        does=f"Opens the {name} TV's page. Green while it's on, with what it shows above its name, and red while it's "
+             "off")
+
+
+def tv_switch_key(page, r, c, tv):
+    """Turns one TV on or off, from its own page. It shows that TV's icon and name, so the page says which TV it is."""
+    n, name, icon, default = tv
+    add(page, r, c, label="Turn Off", icon=icon, cat="off", sub=f"'{name}'",
+        fb=[(TV_ON[n], "on"), (TV_OFF[n], "active")], labels={"on": "Turn Off", "active": "Turn On"},
+        down=[when(TV_ON[n], [press(TV_OFF_LOC[n])], [press(TV_ON_LOC[n])])],
+        does=f"Names the TV. Green while it's on, saying Turn Off: press to turn it off. Red while it's off, saying "
+             f"Turn On: press to turn it on showing {default}")
+
+
+def tv_content_key(page, r, c, tv, content, icon, what):
+    n, name, *_ = tv
+    add(page, r, c, label=content, icon=icon, cat="tv", down=[press(TV_SHOW[n][content])],
+        fb=[(f"{TV_SRC[n]} == '{content}'", "active")],
+        does=f"Shows {what} on the {name} TV, turning it on if it's off. Lit while it shows")
+
+
 def build_pages():
     # Page 1, home
     lights_off_key(1, 0, 0)
@@ -910,8 +1129,8 @@ def build_pages():
     add(2, 0, 3, label="Playlists", icon="playlist", cat="music", down=[setpage(3)], does="Opens Playlists",
         fb=[(ANY_PLAYLIST, "active")])
     ipad_key(*at(IPAD_KEY))
-    blank(2, 1, 1)
-    blank(2, 1, 2)
+    tvs_power_key(*at(TVS_KEY))
+    nav(2, 1, 2, 7, "TVs", "tvs", "Opens TVs, to turn each TV on or off and choose what it shows", cat="tv")
     nav(2, 1, 3, 1, "Home", "home")
     deck_dials(2)
     # Page 3, playlists: seven of them, and Home in the corner
@@ -943,6 +1162,19 @@ def build_pages():
     nav(6, 1, 2, 2, "Back", "back", "Opens More")
     nav(6, 1, 3, 1, "Home", "home")
     deck_dials(6, "zone")
+    # Page 7, TVs: tap a TV to open its page
+    for i, tv in enumerate(TVS):
+        tv_key(7, *divmod(i, 4), tv)
+    nav(7, 1, 3, 1, "Home", "home")
+    deck_dials(7)
+    # Pages 8 to 14, one for each TV: its switch, then what it can show
+    for tv in TVS:
+        p = TV_PAGE[tv[0]]
+        tv_switch_key(p, 0, 0, tv)
+        for i, (content, icon, what) in enumerate(TV_CONTENT, 1):
+            tv_content_key(p, *divmod(i, 4), tv, content, icon, what)
+        nav(p, 1, 3, 7, "Back", "back", "Opens TVs, whose last key is Home")
+        deck_dials(p)
 
 
 TRIGGERS = {}
@@ -962,9 +1194,10 @@ def trigger(tid, name, order, enabled, event, options, actions, condition=None, 
 
 def build_triggers():
     trigger("startup_recovery", "Startup recovery", 0, True, "startup", {"delay": 5000},
-            [press(APPLY_FADE), when(POWERED, [relay(True)], [relay(False)])],
-            does="Five seconds after Companion starts, fades the lights back to where they were, and sends the audio "
-                 "power state to the relay again so they agree. In iPad Mode, it keeps Companion's light output at zero")
+            [press(APPLY_FADE), press(TVS_RESEND), when(POWERED, power_up(), power_down())],
+            does="Five seconds after Companion starts, fades the lights back to where they were, sends every TV its "
+                 "state, and sends the audio power state to the Juice Goose and the speaker plugs again so they agree. "
+                 "In iPad Mode, it keeps Companion's light output at zero")
     trigger("schedule_sunday", "Schedule: Sunday arrival", 1, False, "timeofday",
             {"time": "07:30:00", "days": [0]},
             [press(LOOK_LOC[3]), press(SCENE_LOC["Auditorium"])], DECK,
@@ -1003,6 +1236,9 @@ VARIABLES = {  # name: (description, default)
     "zone_pick": (f"The zone Audio Zones' dial and switch work on, 1 to {len(ZONES)}", "1"),
     "audio_last": ("The source last played, which a zone turned on from silence plays", "Playlist"),
     "audio_power": ("1 while the audio system is on, 0 while the amplifiers are off", "0"),
+    **{f"tv{n}_src": (f"What the {name} TV shows, or Off", "Off") for n, name, *_ in TVS},
+    **{var: (f"ATEM source number the TVs get for {c}, such as 10010 for M/E 1 Program", number)
+       for c, (var, number, _) in ATEM_SOURCES.items()},
     "turn_fast_ms": (f"Dial clicks closer together than this, in ms, move {TURN_FAST} steps each. 0 turns it off",
                      str(TURN_FAST_MS)),
     "turn_medium_ms": (f"Dial clicks closer together than this, in ms, move {TURN_MEDIUM} steps each. 0 turns it off",
@@ -1123,7 +1359,66 @@ GLYPHS = {
     "bolt": '<path d="M13.5 2.5 5 13.5h6.5l-1 8 8.5-11h-6.5z"/>',
     "plan": '<rect x="3" y="3.5" width="18" height="17" rx="2"/><path d="M12 3.5V10M3 12.5h5.5M12 14.5v6M15.5 12.5H21"/>',
     "check": '<circle cx="12" cy="12" r="9"/><path d="M7.5 12.5l3 3 6-6.5"/>',
+    # Rooms that only appear on a TV's screen
+    "chef": '<path d="M7 20.5h10M7 17h10M7 20.5v-6.3A4.2 4.2 0 0 1 6.6 6a5.6 5.6 0 0 1 10.8 0 4.2 4.2 0 0 1-.4 8.2'
+            'v6.3"/>',
+    # Two people across a table
+    "meeting": '<circle cx="6.5" cy="6.2" r="2.6"/><circle cx="17.5" cy="6.2" r="2.6"/>'
+               '<path d="M2.2 14a4.3 4.3 0 0 1 8.6 0M13.2 14a4.3 4.3 0 0 1 8.6 0M1.5 14.5h21M5 14.5v6M19 14.5v6"/>',
+    # Stage curtains drawn back
+    "curtains": '<path d="M3.5 3.5v17h3.6c-1-3.3-.6-5.8 1.6-8.1 1.8-1.9 2.2-5.3 1.8-8.9zM20.5 3.5v17h-3.6'
+                'c1-3.3.6-5.8-1.6-8.1-1.8-1.9-2.2-5.3-1.8-8.9z" fill="currentColor" fill-opacity=".3"/>'
+                '<path d="M2 3.5h20"/>',
+    # What a TV shows
+    "stream": '<path d="M10 8.6v6.8l5.6-3.4z" fill="currentColor"/><path d="M7.4 7.4a6.5 6.5 0 0 0 0 9.2'
+              'M16.6 7.4a6.5 6.5 0 0 1 0 9.2M4.6 4.6a10.5 10.5 0 0 0 0 14.8M19.4 4.6a10.5 10.5 0 0 1 0 14.8"/>',
+    "megaphone": '<path d="M3 10v4a1 1 0 0 0 1 1h2.8l9.7 4.6V4.4L6.8 9H4a1 1 0 0 0-1 1z"/>'
+                 '<path d="M6.8 9v6M8 15.2l1.4 4.7a1 1 0 0 0 1 .7h1.2a.8.8 0 0 0 .8-1l-1.2-4.2'
+                 'M19.5 9.3a3.6 3.6 0 0 1 0 5.4"/>',
+    "sparkle": '<path d="M10 4.5Q10.9 12.1 18 13Q10.9 13.9 10 21.5Q9.1 13.9 2 13Q9.1 12.1 10 4.5z" '
+               'fill="currentColor" fill-opacity=".22"/>'
+               '<path d="M18.5 2.2Q18.8 5.2 21.8 5.5Q18.8 5.8 18.5 8.8Q18.2 5.8 15.2 5.5Q18.2 5.2 18.5 2.2z" '
+               'fill="currentColor"/>',
+    "usb": '<path d="M7.5 10h9v9.5a2.2 2.2 0 0 1-2.2 2.2H9.7a2.2 2.2 0 0 1-2.2-2.2zM9.3 10V3h5.4v7"/>'
+           '<path d="M10.6 5.2h1v1.6h-1zM12.4 5.2h1v1.6h-1z" fill="currentColor" stroke-width=".8"/>'
+           '<circle cx="12" cy="18" r="1.1"/>',
+    "hdmi": '<path d="M7 3h10v3.6l-1.7 2.1H8.7L7 6.6z"/><path d="M9.3 5.2h5.4"/>'
+            '<path d="M5.5 8.7h13v6.3a2.2 2.2 0 0 1-2.2 2.2H7.7A2.2 2.2 0 0 1 5.5 15zM12 17.2v4.3M9.5 11.5v2.5'
+            'M12 11.5v2.5M14.5 11.5v2.5"/>',
+    # A BNC plug, the round bayonet connector on an SDI cable: pin, sleeve, knurled ring, boot and cable
+    "bnc": '<path d="M12 2.4v3.2"/><rect x="9" y="5.6" width="6" height="5.8" rx=".9"/>'
+           '<path d="M7.2 11.4h9.6v3.8H7.2zM10.4 11.4v3.8M13.6 11.4v3.8"/>'
+           '<path d="M9.4 15.2h5.2l-1 3.6h-3.2zM12 18.8v2.8"/>',
 }
+_TV = ('<rect x=".6" y="1.6" width="22.8" height="17" rx="2.4" fill="currentColor" fill-opacity=".14" stroke="none"/>'
+       '<rect x=".6" y="1.6" width="22.8" height="17" rx="2.4" stroke-width="1.6"/>'
+       '<path d="M8.5 22.3h7M12 18.6v3.7" stroke-width="1.6"/>')
+
+
+def _on_screen(inner, scale=0.58):
+    """A TV with a smaller glyph filling its screen, so each TV's key shows the room the TV is in."""
+    tx, ty = 12 - 12 * scale, 10.1 - 12 * scale
+    return (_TV + f'<g transform="translate({tx:.2f} {ty:.2f}) scale({scale})" stroke-width="{1.45 / scale:.2f}">'
+            f'{inner}</g>')
+
+
+GLYPHS.update({
+    "tv_lobby": _on_screen(GLYPHS["lobby"]),
+    # The lobby's sofa, with an arrow to its right
+    "tv_lobby_right": _on_screen(f'<g transform="translate(-3.2 1.4) scale(.86)">{GLYPHS["lobby"]}</g>'
+                                 '<path d="M17 12.6h6M20.2 9.6l3 3-3 3"/>', 0.6),
+    "tv_cafe": _on_screen(GLYPHS["cup"]),
+    "tv_hall": _on_screen(GLYPHS["hall"]),
+    "tv_kitchen": _on_screen(GLYPHS["chef"]),
+    "tv_meeting": _on_screen(GLYPHS["meeting"]),
+    "tv_backstage": _on_screen(GLYPHS["curtains"]),
+    "tv_power": _on_screen(GLYPHS["power"], 0.52),
+    # Two screens, for the key that opens TVs
+    "tvs": ('<path d="M6 6.8V6a1.5 1.5 0 0 1 1.5-1.5h12A1.5 1.5 0 0 1 21 6v7.5a1.5 1.5 0 0 1-1.5 1.5H17.5"/>'
+            '<rect x="2.5" y="7.5" width="15" height="10.5" rx="1.6" fill="currentColor" fill-opacity=".14" '
+            'stroke="none"/><rect x="2.5" y="7.5" width="15" height="10.5" rx="1.6"/>'
+            '<path d="M7 21h6M10 18v3"/>'),
+})
 
 SVG = 'xmlns="http://www.w3.org/2000/svg"'
 
@@ -1175,8 +1470,13 @@ PICTURES = {
     "night": Picture(sky=((0, "#16306a"), (.45, "#0b1a46"), (1, "#050b24")),
                      far=("#1f2d62", "#121b40"), mid=("#122050", "#0a1332"), near=("#081028", "#040818"),
                      rim="#b4ccff", sun=False, aurora=True),
+    # The blue hour, the last of the light a teal glow on the horizon, for the TV pages
+    "twilight": Picture(sky=((0, "#0b1336"), (.3, "#172b5e"), (.58, "#1f4a7c"), (.8, "#2a7690"), (1, "#4fb0a8")),
+                        far=("#255070", "#15304c"), mid=("#173c5a", "#0c243a"), near=("#0a1c2e", "#050e1a"),
+                        rim="#a6f2e2", sun=False),
 }
-PAGE_PICTURE = {1: "dawn", 2: "dusk", 3: "dusk", 4: "night", 5: "dusk", 6: "dusk"}
+PAGE_PICTURE = {1: "dawn", 2: "dusk", 3: "dusk", 4: "night", 5: "dusk", 6: "dusk", 7: "twilight",
+                **{p: "twilight" for p in TV_PAGE.values()}}
 
 
 def _smooth(ridge):
@@ -1715,11 +2015,29 @@ def export():
                      "config": {"prefix": f"https://{WIIM_IP}/", "proxyAddress": "", "authType": "none",
                                 "authUser": "", "authPassword": "", "rejectUnauthorized": False,
                                 "insecureHTTPParser": False}},
-            "power": {"label": "power", "moduleId": "generic-http", "enabled": True, "isFirstInit": False,
-                      "lastUpgradeIndex": 3, "sortOrder": 3, "updatePolicy": "stable",
-                      "config": {"prefix": f"http://{POWER_IP}/", "proxyAddress": "", "authType": "none",
-                                 "authUser": "", "authPassword": "", "rejectUnauthorized": True,
-                                 "insecureHTTPParser": False}},
+            # generic-tcp-udp 2.3.0 has no upgrade scripts. Its port default is a number, so this is too
+            "power": {"label": "power", "moduleId": "generic-tcp-udp", "enabled": True, "isFirstInit": False,
+                      "lastUpgradeIndex": -1, "sortOrder": 3, "updatePolicy": "stable",
+                      "config": {"host": POWER_IP, "port": POWER_PORT, "prot": "udp", "broadcast": False,
+                                 "saveresponse": False, "convertresponse": "none"}},
+            # tplink-kasasmartplug 2.2.4 has three upgrade scripts. Scanning is off, so each plug is found by address
+            **{conn: {"label": conn, "moduleId": "tplink-kasasmartplug", "enabled": True, "isFirstInit": False,
+                      "lastUpgradeIndex": 2, "sortOrder": 4 + i, "updatePolicy": "stable",
+                      "config": {"host": ip, "scan": False, "polling": True}}
+               for i, (conn, ip) in enumerate(SPEAKER_PLUGS)},
+            # bmd-atem 4.5.0 (module API 2.1, Node 26, both in Companion 5.1.3). With the model set, its output
+            # lists show all 24 before it connects
+            "atem": {"label": "atem", "moduleId": "bmd-atem", "enabled": True, "isFirstInit": False,
+                     "lastUpgradeIndex": ATEM_UPGRADE, "sortOrder": 4 + len(SPEAKER_PLUGS), "updatePolicy": "stable",
+                     "config": {"bonjourHost": None, "host": ATEM_IP, "modelID": ATEM_MODEL, "presets": 0,
+                                "fadeFps": 10, "enableCameraControl": False, "pollTimecode": False}},
+            # generic-tcp-udp 2.3.0 again, holding a TCP connection to each TV's Simple IP control port. It
+            # reconnects by itself if the TV drops it. The TV's last reply shows as $(tvN:tcp_response)
+            **{conn: {"label": conn, "moduleId": "generic-tcp-udp", "enabled": True, "isFirstInit": False,
+                      "lastUpgradeIndex": -1, "sortOrder": 5 + len(SPEAKER_PLUGS) + i, "updatePolicy": "stable",
+                      "config": {"host": TV_IP.format(n), "port": TV_PORT, "prot": "tcp", "broadcast": False,
+                                 "saveresponse": True, "convertresponse": "string"}}
+               for i, (conn, n) in enumerate(TV_CONNS.items())},
         },
     }
 
@@ -2045,7 +2363,10 @@ ALLOWED = {  # (connection, definition): option names, taken from the module and
     ("wing", "fader-delta"): {"sel", "delta", *FADE},
     ("dmx", "set_complex"): {"params", "duration"},
     ("wiim", "get"): {"url", "header", "jsonResultDataVariable", "result_stringify", "statusCodeVariable"},
-    ("power", "get"): {"url", "header", "jsonResultDataVariable", "result_stringify", "statusCodeVariable"},
+    ("power", "send"): {"id_send", "id_end"},
+    **{(conn, d): set() for conn, _ in SPEAKER_PLUGS for d in ("on", "off")},  # single-plug mode, no options
+    **{(conn, "send"): {"id_send", "id_end"} for conn in TV_CONNS},
+    ("atem", "aux"): {"aux", "input"},
 }
 ELEMENT_PROPS = {  # from Companion 5.1.3 StyleLayersModel
     "canvas": {"decoration", "showStatusIcons"},
@@ -2180,6 +2501,7 @@ class Sim:
             self.wing.update({f"{sel.strip('/').replace('/', '')}_level": float(SRC_NORMAL)
                               for _, sel, *_ in VOLUME_SOURCES})
         self.sends, self.mutes, self.log, self.page = {}, {}, [], 1
+        self.goose = []  # every console command sent to the Juice Goose, in order
         self.dmx = [0] * 512
         self.kept = {}
         self.clock, self.this = 1_000_000, {}
@@ -2211,6 +2533,9 @@ class Sim:
             o = {k: self.option(v) for k, v in a["options"].items()} if a["definitionId"] != "logic_if" else {}
             d = a["definitionId"]
             if d == "button_pressrelease":
+                if o["location"] in TV_SENT:  # a TV's Send block: record what it would send, until it sends it
+                    n = TV_SENT[o["location"]]
+                    self.log.append(("tv", n, self.vars[f"tv{n}_src"]))
                 key = KEYS[o["location"]]
                 self.run(key.down)
                 self.run(key.up)
@@ -2222,8 +2547,17 @@ class Sim:
                 self.vars[o["name"]] = o["value"] if v["isExpression"] else self.text(v["value"])
             elif d == "set_page":
                 self.page = o["page"]
-            elif d == "get" and a["connectionId"] == "power":
-                self.log.append(("power", "on" if self.text(o["url"]).endswith("on=true") else "off"))
+            elif d == "send" and a["connectionId"] == "power":
+                cmd = self.text(o["id_send"])
+                self.goose.append(cmd)
+                if cmd.startswith("SEQ"):
+                    self.log.append(("power", "on" if cmd.startswith("SEQUP") else "off"))
+            elif a["connectionId"] in dict(SPEAKER_PLUGS):
+                self.log.append((a["connectionId"], d))
+            elif a["connectionId"] in TV_CONNS:
+                self.log.append((a["connectionId"], tv_said(o)))
+            elif a["connectionId"] == "atem":
+                self.log.append(("atem", o["aux"], str(o["input"])))
             elif d == "get":
                 self.log.append(("wiim", self.text(o["url"]).split("=", 1)[1]))
             elif a["connectionId"] == "wing" and not self.connected:
@@ -2296,6 +2630,8 @@ def tests():
         checks.append((name, bool(condition)))
 
     N = float(SRC_NORMAL)  # a source fader at normal
+    UP_LOG = [("power", "on")] + [(conn, "on") for conn, _ in SPEAKER_PLUGS]  # what reaches the power gear, in order
+    DOWN_LOG = [(conn, "off") for conn, _ in SPEAKER_PLUGS] + [("power", "off")]
     to_top = SRC_MAX - SRC_NORMAL + 3  # slow clicks enough to reach the top from normal
 
     def lit(st, loc):
@@ -2716,10 +3052,10 @@ def tests():
     s.vars.update(lt_all="70", lt_linear="50")
     s.run(TRIGGERS["startup_recovery"]["control"]["actions"])
     ok("startup restores the lights", s.channel(0) == dmx_of(70, 50))
-    ok("startup sends the relay off while the audio is off", s.log[-1] == ("power", "off"))
+    ok("startup sends the power off while the audio is off", s.log[-len(DOWN_LOG):] == DOWN_LOG)
     s.vars["audio_power"] = "1"
     s.run(TRIGGERS["startup_recovery"]["control"]["actions"])
-    ok("startup sends the relay on while the audio is on", s.log[-1] == ("power", "on"))
+    ok("startup sends the power on while the audio is on", s.log[-len(UP_LOG):] == UP_LOG)
     s.vars["light_mode"] = "ipad"
     s.run(TRIGGERS["startup_recovery"]["control"]["actions"])
     ok("startup in iPad Mode keeps output at zero", s.channel(0) == 0)
@@ -2747,8 +3083,12 @@ def tests():
     s.press("1/1/0")
     ok("the power key, pressed while off, turns the system on with nothing playing", s.vars["audio_power"] == "1"
        and label_of(s, "1/1/0") == ("Turn Audio Off", "on")
-       and s.log == [("power", "on")] and not lit(s, "1/1/0")
+       and s.log == UP_LOG and not lit(s, "1/1/0")
        and [s.vars[f"z{z}_src"] for z, *_ in ZONES] == ["Off"] * 5)
+    ok("the rack outlets sequence on, then the powered speakers' plugs turn on",
+       s.log[0] == ("power", "on") and all(entry[1] == "on" for entry in s.log[1:]))
+    ok("every sequence goes to the Juice Goose after DEACTIVATE, so its front switch can't override it",
+       s.goose == ["DEACTIVATE", f"SEQUP{SEQ_SECONDS}"])
     ok("once on, the Mics panel shows its level", s.show("1/2/3", "value") == f"{MIC_START} dB"
        and not s.eval(KEYS["1/2/3"].show["dim"]))
     s = Sim()
@@ -2770,9 +3110,9 @@ def tests():
        and ("wiim", "setPlayerCmd:stop") in s.log)
     s.log.clear()
     s.press("1/1/0")
-    ok("Turn Audio Off turns every zone off, then the amplifiers", s.vars["audio_power"] == "0"
+    ok("Turn Audio Off turns every zone off, then the speakers, then the rack outlets", s.vars["audio_power"] == "0"
        and label_of(s, "1/1/0") == ("Turn Audio On", "active")
-       and hears(s) == ["Off"] * 5 and s.log[-1] == ("power", "off")
+       and hears(s) == ["Off"] * 5 and s.log[-len(DOWN_LOG):] == DOWN_LOG
        and not lit(s, "1/1/1"))
     s = Sim()
     s.press("1/1/1")
@@ -2789,8 +3129,136 @@ def tests():
     s = Sim()
     s.press("3/0/3")
     ok("a playlist key turns the system on", s.vars["audio_power"] == "1" and s.hears(1) == "Playlist")
+    # TVs
+    defaults = [d for *_, d in TVS]
+    tv_keys = {n: f"7/{r}/{c}" for n, (r, c) in ((tv[0], divmod(i, 4)) for i, tv in enumerate(TVS))}
+
+    def tv_states(st):
+        return [st.vars[f"tv{n}_src"] for n, *_ in TVS]
+
+    def tv_sends(st):
+        return [e for e in st.log if e[0] == "tv"]
+
+    def content_key(n, content):
+        i = [c for c, *_ in TV_CONTENT].index(content) + 1
+        return f"{TV_PAGE[n]}/{i // 4}/{i % 4}"
+
+    s = Sim()
+    ok("the TVs start off, with the TVs key red and saying Turn TVs On", tv_states(s) == ["Off"] * len(TVS)
+       and label_of(s, TVS_KEY) == ("Turn TVs On", "active") and s.eval(KEYS[TVS_KEY].sub) == ""
+       and all(label_of(s, loc)[1] == "active" and s.eval(KEYS[loc].sub) == "Off" for loc in tv_keys.values()))
+    s.press(TVS_KEY)
+    ok("Turn TVs On turns every TV on, each showing its default", tv_states(s) == defaults
+       and tv_sends(s) == [("tv", n, d) for n, *_, d in TVS])
+    ok("then the TVs key is green and says Turn TVs Off, with no count while all are on",
+       label_of(s, TVS_KEY) == ("Turn TVs Off", "on") and s.eval(KEYS[TVS_KEY].sub) == "")
+    ok("each TV's key is green and shows what it shows", all(
+        label_of(s, tv_keys[n])[1] == "on" and s.eval(KEYS[tv_keys[n]].sub) == d for n, *_, d in TVS))
+    s.log.clear()
+    s.press(content_key(3, "Stream"))
+    ok("a content key switches its TV and lights, and only that TV is sent anything", s.vars["tv3_src"] == "Stream"
+       and lit(s, content_key(3, "Stream")) and not lit(s, content_key(3, "Announcements"))
+       and tv_sends(s) == [("tv", 3, "Stream")] and s.eval(KEYS[tv_keys[3]].sub) == "Stream")
+    s.press(f"{TV_PAGE[3]}/0/0")
+    ok("a TV's switch turns it off, turning red and saying Turn On", s.vars["tv3_src"] == "Off"
+       and label_of(s, f"{TV_PAGE[3]}/0/0") == ("Turn On", "active") and label_of(s, tv_keys[3])[1] == "active"
+       and not any(lit(s, content_key(3, c)) for c, *_ in TV_CONTENT) and tv_sends(s)[-1] == ("tv", 3, "Off"))
+    ok("with some TVs on, the TVs key stays green and says how many",
+       label_of(s, TVS_KEY) == ("Turn TVs Off", "on") and s.eval(KEYS[TVS_KEY].sub) == f"{len(TVS) - 1} of {len(TVS)} on")
+    s.press(f"{TV_PAGE[3]}/0/0")
+    ok("a TV turned back on shows its default, not what it showed last", s.vars["tv3_src"] == defaults[2]
+       and label_of(s, f"{TV_PAGE[3]}/0/0") == ("Turn Off", "on"))
+    s.press(f"{TV_PAGE[6]}/0/0")
+    s.press(content_key(6, "Local HDMI"))
+    ok("a content key turns its TV on if it's off", s.vars["tv6_src"] == "Local HDMI")
+    s.log.clear()
+    s.press(TVS_KEY)
+    ok("Turn TVs Off turns every TV off", tv_states(s) == ["Off"] * len(TVS)
+       and tv_sends(s) == [("tv", n, "Off") for n, *_ in TVS] and label_of(s, TVS_KEY) == ("Turn TVs On", "active"))
+    s = Sim()
+    s.press(content_key(5, "Local HDMI"))
+    s.press(ALL_TVS_ON)
+    ok("All TVs On leaves a TV that's already on showing what it shows",
+       tv_states(s) == defaults[:4] + ["Local HDMI"] + defaults[5:])
+    s = Sim()
+    s.press("2/1/2")
+    ok("TVs on More opens the TVs page", s.page == 7)
+    s.press(tv_keys[4])
+    ok("a TV's key opens its page", s.page == TV_PAGE[4])
+    s.press(f"{TV_PAGE[4]}/1/3")
+    ok("Back on a TV's page returns to TVs", s.page == 7)
+    ok("every TV page names its TV, then offers each thing it can show, then Back", all(
+        s.eval(KEYS[f"{TV_PAGE[n]}/0/0"].sub) == name
+        and [KEYS[content_key(n, c)].label for c, *_ in TV_CONTENT] == [c for c, *_ in TV_CONTENT]
+        and KEYS[f"{TV_PAGE[n]}/1/3"].label == "Back"
+        for n, name, *_ in TVS))
+    ok("every TV's default is something it can show", set(defaults) <= {c for c, *_ in TV_CONTENT})
+    s = Sim()
+    s.press(TVS_KEY)
+    s.press(content_key(1, "Custom"))
+    s.log.clear()
+    s.run(TRIGGERS["startup_recovery"]["control"]["actions"])
+    ok("startup sends every TV its state again", tv_sends(s) == [("tv", n, s.vars[f"tv{n}_src"]) for n, *_ in TVS]
+       and s.vars["tv1_src"] == "Custom")
+    s.log.clear()
+    s.press(CLOSE_UP)
+    ok("Close Up turns every TV off", tv_states(s) == ["Off"] * len(TVS)
+       and all(("tv%d" % n, "power_off") in s.log for n, *_ in TVS))
+
+    # What reaches the TVs and the ATEM
+    def hw(st, n):
+        return [e for e in st.log if e[0] == f"tv{n}" or (e[0] == "atem" and e[1] == TV_AUX[n])]
+
+    def picture(st, n, content):
+        var = ATEM_SOURCES[content][0]
+        return [("atem", TV_AUX[n], st.vars[var]), (f"tv{n}", f"hdmi{TV_ATEM_HDMI}")]
+
+    s = Sim()
+    s.press(content_key(3, "Stream"))
+    ok("Stream turns the TV on, gives its ATEM output the Stream source and sets the TV to the ATEM's input, "
+       "then sends the picture again", hw(s, 3) == [("tv3", "power_on")] + picture(s, 3, "Stream") * 2
+       and s.vars["atem_stream"] == ATEM_SOURCES["Stream"][1])
+    for content in ("Announcements", "Custom", "SDI"):
+        s.vars[ATEM_SOURCES[content][0]] = "7"
+        s.log.clear()
+        s.press(content_key(3, content))
+        ok(f"{content} sends the source in its variable", hw(s, 3) == [("tv3", "power_on")] + picture(s, 3, content) * 2
+           and hw(s, 3)[1] == ("atem", TV_AUX[3], "7"))
+    s.log.clear()
+    s.press(content_key(3, "Local HDMI"))
+    ok("Local HDMI sets the TV to its own input and leaves the ATEM alone",
+       hw(s, 3) == [("tv3", "power_on")] + [("tv3", f"hdmi{TV_LOCAL_HDMI}")] * 2)
+    s.log.clear()
+    s.press(content_key(3, "USB"))
+    ok("USB only turns the TV on for now", hw(s, 3) == [("tv3", "power_on")])
+    s.log.clear()
+    s.press(f"{TV_PAGE[3]}/0/0")
+    ok("a TV's switch turns it off and sends nothing else", hw(s, 3) == [("tv3", "power_off")])
+    s = Sim()
+    s.press(content_key(5, "Stream"))
+    ok("a TV's keys reach only that TV and its own ATEM output", all(
+        e[0] == "tv5" or e == ("atem", TV_AUX[5], s.vars["atem_stream"])
+        for e in s.log if e[0] in TV_CONNS or e[0] == "atem"))
+    ok("every TV has its own ATEM output", len(set(TV_AUX.values())) == len(TVS))
+    sent = [tv_input(1, p) for p in (TV_ATEM_HDMI, TV_LOCAL_HDMI)] + [sony(1, c) for c in TV_POWER.values()]
+    ok("every TV message is Sony's Simple IP form: 24 bytes, *S, C for control, ending in a line feed",
+       all(len(m["options"]["id_send"]["value"] + m["options"]["id_end"]["value"]) == 24
+           and m["options"]["id_send"]["value"].startswith("*SC") for m in sent)
+       and sent[0]["options"]["id_send"]["value"] == "*SCINPT0000000100000001")
+    s = Sim()
+    ok("Stream starts as M/E 1 Program, Announcements as input 20, Custom as input 19 and SDI as Black",
+       {c: s.vars[v] for c, (v, *_) in ATEM_SOURCES.items()}
+       == {"Stream": "10010", "Announcements": "20", "Custom": "19", "SDI": "0"})
+    ok("each TV's blocks sit on its own two Library rows, clear of every other block",
+       len({tv_block(n, col) for n, *_ in TVS for col in range(3 + len(TV_CONTENT))} | {
+           ALL_TVS_ON, ALL_TVS_OFF, TVS_TOGGLE, TVS_RESEND}) == len(TVS) * (3 + len(TV_CONTENT)) + 4)
+    s.press(TVS_KEY)
+    ok("Turn TVs On turns each TV on once and sends it its default", all(
+        hw(s, n) == [(f"tv{n}", "power_on")] + picture(s, n, d) * 2 for n, *_, d in TVS))
     # Every display evaluates in every state without an error
     states = [Sim(), Sim(), Sim(), Sim(connected=False), Sim()]
+    states[1].press(TVS_KEY)
+    states[1].press(f"{TV_PAGE[7]}/0/0")
     states[1].press("1/0/2")
     states[1].press(SCENE_LOC["Music Everywhere"])
     states[1].press("4/1/2")
@@ -2837,7 +3305,13 @@ CONDITIONS = {DECK: "the deck has the lights, not the iPad", NONE_PLAYLIST: "no 
                  for source, *_ in SOURCES},
               **{plays(source): f"any zone is on {source}" for source, *_ in SOURCES},
               **{f"$(custom:z{z}_src) == '{source}'": f"{name} is on {source}"
-                 for z, name, *_ in ZONES for source, *_ in SOURCES}}
+                 for z, name, *_ in ZONES for source, *_ in SOURCES},
+              **{TV_ON[n]: f"the {name} TV is on" for n, name, *_ in TVS},
+              **{TV_OFF[n]: f"the {name} TV is off" for n, name, *_ in TVS},
+              **{from_atem(n): f"the {name} TV shows " + ", ".join(list(ATEM_SOURCES)[:-1])
+                 + f" or {list(ATEM_SOURCES)[-1]}" for n, name, *_ in TVS},
+              **{f"$(custom:tv{n}_src) == 'Local HDMI'": f"the {name} TV shows Local HDMI" for n, name, *_ in TVS},
+              ANY_TV: "any TV is on"}
 
 
 def describe(actions, indent=0):
@@ -2870,10 +3344,23 @@ def describe(actions, indent=0):
                 out += describe(a["children"]["else_actions"], indent + 1)
         elif d == "set_complex":
             out.append(f"{pad}Art-Net to the ODE: `$(custom:dmx_cmd)`, fading {int(o['duration']) / 1000:g} s")
-        elif d == "get" and a["connectionId"] == "power":
-            on = o["url"].endswith("on=true")
-            out.append(f"{pad}Relay {'closes' if on else 'opens'}: the Furman sequences the amplifiers "
-                       f"{'on' if on else 'off'}")
+        elif d == "send" and a["connectionId"] == "power":
+            cmd = o["id_send"]
+            what = ("its front switch can't override Companion" if cmd == "DEACTIVATE" else
+                    f"pods 1 to 3 come on {SEQ_SECONDS} s apart" if cmd.startswith("SEQUP") else
+                    f"pods 3 to 1 go off {SEQ_SECONDS} s apart")
+            out.append(f"{pad}Juice Goose `{cmd}`: {what}")
+        elif a["connectionId"] in dict(SPEAKER_PLUGS):
+            out.append(f"{pad}Speaker plug `{a['connectionId']}` turns {d}")
+        elif a["connectionId"] in TV_CONNS:
+            said = tv_said(o)
+            out.append(f"{pad}TV `{a['connectionId']}` " + (f"switches to HDMI {said[4:]}" if said.startswith("hdmi")
+                                                             else f"turns {said[6:]}"))
+        elif a["connectionId"] == "atem":
+            n = {aux: tn for tn, aux in TV_AUX.items()}[o["aux"]]
+            names = [f"`{v}`" for v, *_ in ATEM_SOURCES.values()]
+            out.append(f"{pad}ATEM output {o['aux']} takes the source in " + ", ".join(names[:-1])
+                       + f" or {names[-1]}, for what `tv{n}_src` says")
         elif d == "get":
             out.append(f"{pad}WiiM `{o['url'].split('=', 1)[1]}`")
         elif d == "set-send-mute":
@@ -2949,8 +3436,16 @@ def write_doc(count, checks):
       f"| Wing Rack | `wing`, {WING_IP} | Wing OSC through the Behringer module | `/bus/14/send/MX1/on` = 1 |\n"
       f"| ODE Mk3 | `dmx`, {ODE_IP}, Art-Net universe {ARTNET_UNIVERSE} | Channel values through the Art-Net module | `1-8,166;9-12,166;13-16,166;` and so on |\n"
       f"| WiiM | `wiim`, https://{WIIM_IP}/ | HTTPS GET to `httpapi.asp?command=` | `MCUKeyShortClick:1` |\n"
-      f"| Amplifier power | `power`, http://{POWER_IP}/ | HTTP GET to a Shelly Pro 1 relay, wired to the Furman "
-      "sequencer's remote terminals | `rpc/Switch.Set?id=0&on=true` |\n")
+      f"| Rack power | `power`, {POWER_IP}, UDP {POWER_PORT} | Console commands to a Juice Goose iP-1520 through "
+      f"the generic TCP/UDP module, each ended with a carriage return | `DEACTIVATE`, then `SEQUP{SEQ_SECONDS}` |\n"
+      f"| Powered speakers | {', '.join(f'`{c}`, {ip}' for c, ip in SPEAKER_PLUGS)} | On and off through the "
+      "TP-Link Kasa Smart Plug module, one connection a plug | Power On |\n"
+      f"| TVs | `tv1` to `tv{len(TVS)}`, {TV_IP.format(1)} to .8{len(TVS)}, TCP {TV_PORT} | Sony's Simple IP "
+      "control through the generic TCP/UDP module: 24-byte messages, each ended with a line feed | "
+      f"`{TV_POWER['power_on']}`, then `*SCINPT00000001{TV_ATEM_HDMI:08d}` for HDMI {TV_ATEM_HDMI} |\n"
+      f"| ATEM | `atem`, {ATEM_IP}{' (a placeholder, the factory address)' if ATEM_IP_PLACEHOLDER else ''}, "
+      "4 M/E Constellation HD | An output's source through "
+      f"the Blackmagic ATEM module | Output {TV_AUX[1]} takes `$(custom:atem_stream)` |\n")
     a("Key addresses read page/row/column from 0, the same form Companion uses. Rows and columns start at the top left.\n")
     a("On the Stream Deck +, rows 0 and 1 are the keys, row 2 is the touch strip, and row 3 is the dials.\n")
     a("## How it looks\n")
@@ -2963,11 +3458,13 @@ def write_doc(count, checks):
       "a check mark has just saved a look. While the audio system is off, the audio power key is red and says Turn "
       "Audio On, and the audio panels on the touch strip go grey. While it is on, that key is green and says Turn "
       "Audio Off. On Audio Zones, each zone key is green while it plays and red while it's off, and the switch "
-      "works like the power key for the picked zone.\n")
+      "works like the power key for the picked zone. The TV keys work the same way: green while a TV is on and red "
+      "while it's off, with magenta marking what a TV shows.\n")
     a("Each page shows one picture across its eight keys, cut into a piece per key, and its touch strip is a lake "
       "reflecting the sky. Home is dawn, the sun cresting a ridge: over the lights row the sky brightens from Lights "
       "Off, under the moon, to Lights 3, nearest the sun. More, Playlists, Audio Source and Audio Zones are dusk, "
-      "with the sun setting on the other side, and Light Control is night under the northern lights, so each part "
+      "with the sun setting on the other side, Light Control is night under the northern lights, and the TV pages "
+      "are the blue hour, a teal glow left on the horizon, so each part "
       "of the deck is easy to tell apart. Blank keys still show their piece. The picture allows for the bezel "
       f"between keys ({KEY_GAP} pixels, against a {KEY_PX}-pixel key), so it lines up across them. If it looks off "
       "on a real deck, measure a key and the gap between two keys and set `KEY_GAP` in build.py to 144 times the "
@@ -2985,11 +3482,14 @@ def write_doc(count, checks):
       "The rack and each door have their own surface group, which sets the pages that station may use. Every group "
       "starts on Home with every page, so to lock a door out of something, untick its page in that door's group.\n")
     a("The first two dials and the last one do the same thing on every page, so hands learn them. The third dial "
-      "follows the page: Volume on Home, More and Playlists, the picked area on Light Control, Bluetooth on Audio "
-      "Source, and the picked zone on Audio Zones.\n")
+      "follows the page: Volume on Home, More, Playlists and the TV pages, the picked area on Light Control, "
+      "Bluetooth on Audio Source, and the picked zone on Audio Zones.\n")
     a("![Stream Deck pages](images/stream-deck-pages.png)\n")
     notes = {
-        2: "More is the jumping-off point to the pages below it. Its dials match Home's.",
+        2: "More is the jumping-off point to the pages below it. Its dials match Home's. Turn TVs On and Off "
+           "switches every TV at once, and TVs opens the page for each TV.",
+        7: f"A key for each of the {len(TVS)} TVs: green while it's on, with what it shows above its name, and red "
+           "while it's off. Tap one to open its page.",
         3: f"{len(PLAYLISTS)} playlists and Home. Each playlist key plays its WiiM preset of the same number and is "
            "lit while it plays. In a silent room it starts music inside, the way Music on Home does. For music "
            "outside too, switch the entries on in Audio Zones. The Music Everywhere block stays in the Library for "
@@ -3004,7 +3504,21 @@ def write_doc(count, checks):
            "Vestibule then turns that zone on or off, and the Zone dial sets its volume. A zone switched on plays what the other zones are playing, or the source played last if "
            "nothing is, and turns the audio system on if it's off.",
     }
+    first_tv, last_tv = TV_PAGE[TVS[0][0]], TV_PAGE[TVS[-1][0]]
     for n in DECK_PAGES:
+        if first_tv < n <= last_tv:
+            continue  # the TV pages are alike, so the first one stands for them all
+        if n == first_tv:
+            a(f"### Pages {first_tv} to {last_tv}: each TV\n")
+            a("Each TV has a page like this one, shown for the first TV. The first key names the TV and switches it, "
+              "green and saying Turn Off while it's on, red and saying Turn On while it's off. The next five choose "
+              "what it shows, turning it on if it's off, and the one it shows is lit. Back returns to TVs.\n")
+            a("| Page | TV | Variable | Shows when it comes on |\n| --- | --- | --- | --- |")
+            for tn, name, _, default in TVS:
+                a(f"| {TV_PAGE[tn]} | {name} | `tv{tn}_src` | {default} |")
+            a("")
+            a(page_table(n) + "\n")
+            continue
         a(f"### Page {n}: {PAGES[n][0]}\n")
         if n in notes:
             a(notes[n] + "\n")
@@ -3018,13 +3532,14 @@ def write_doc(count, checks):
             a("")
         a(page_table(n) + "\n")
     a("## Audio power\n")
-    a("A Furman sequencer powers the amplifiers. Companion switches it through a network relay, a Shelly Pro 1, "
-      "whose contact is wired to the Furman's remote terminals. Closing the contact sequences the amplifiers on, "
-      "and opening it sequences them off. The Wing Rack, the WiiM and the Bluetooth receiver stay on all the time, "
-      "so Companion can always reach them and a source plays as soon as the amplifiers are up. "
-      "[Audio setup](06-audio-setup.md#amplifier-power) has the wiring.\n")
+    a("A Juice Goose iP-1520 powers the rack's switchable gear, the amplifiers among them, and Kasa smart plugs power "
+      "the powered speakers. Turning on, the Juice Goose sequences its three outlet pods on, 1 to 3, "
+      f"{SEQ_SECONDS} s apart, and {SPEAKERS_AFTER_MS / 1000:g} s later the speaker plugs turn on. Turning off, the "
+      "speaker plugs go first, then a second later the Juice Goose sequences the pods off, 3 to 1. The Wing Rack, "
+      "the WiiM and the Bluetooth receiver stay on all the time, so Companion can always reach them and a source "
+      "plays as soon as the amplifiers are up. [Audio setup](06-audio-setup.md#audio-power) has the wiring.\n")
     a("`audio_power` holds the state: 1 while the system is on, 0 while it is off. Two blocks change it, "
-      f"`{POWER_ON}` Power On and `{POWER_OFF}` Power Off, and only they talk to the relay.\n")
+      f"`{POWER_ON}` Power On and `{POWER_OFF}` Power Off, and only they talk to the Juice Goose and the plugs.\n")
     a("| Key | While the audio is off | While it's on |\n| --- | --- | --- |\n"
       "| Audio power key | Red, saying Turn Audio On. Press to turn the system on, with nothing playing | Green, "
       "saying Turn Audio Off. Press to turn every zone off, stop the music, then turn the amplifiers off |\n"
@@ -3036,9 +3551,36 @@ def write_doc(count, checks):
       "| The night schedule | Stays off | Turns the lights and the audio system off |\n")
     a("Only Auditorium, Music, Bluetooth and Lobby Stage toggle. A playlist key chooses what plays, so pressing it "
       "again keeps playing. On Audio Zones, the switch turns the picked zone off, and the system stays on.\n")
-    a("Five seconds after Companion starts, the startup trigger sends the relay the state in `audio_power`, so the "
-      "two always agree. To use a different power switch, such as Furman's own BB-RS232 adapter, change only "
-      "those two blocks and that trigger.\n")
+    a("Five seconds after Companion starts, the startup trigger sends the Juice Goose and the plugs the state in "
+      "`audio_power`, so they always agree. To use a different power switch, change only those two blocks and that "
+      "trigger. To add a powered speaker, add its plug to `SPEAKER_PLUGS` in build.py.\n")
+    a("## TVs\n")
+    a(f"Each of the {len(TVS)} TVs keeps its state in one variable, `tv1_src` to `tv{len(TVS)}_src`: what it shows, "
+      "or Off. It can show " + ", ".join(f"{what} ({c})" for c, _, what in TV_CONTENT[:-1])
+      + f" or {TV_CONTENT[-1][2]} ({TV_CONTENT[-1][0]}). A TV that comes on shows its default, from this "
+      "table, rather than what it showed last, so it's always predictable. Choosing what a TV shows turns it on.\n")
+    a("| TV | Default | Connection | ATEM output | Its rows in the Library |\n| --- | --- | --- | --- | --- |")
+    for tn, name, _, default in TVS:
+        pg, row = tv_rows(tn)
+        a(f"| {name} | {default} | `tv{tn}`, {TV_IP.format(tn)} | {TV_AUX[tn]} | `{pg}/{row}` and `{pg}/{row + 1}` |")
+    a("")
+    a("Every block that changes a TV sets its variable, then runs that TV's Send block, the first on its first row. "
+      "The second row has a Show block for each thing it can show. Only "
+      "the Send blocks talk to the TVs and the ATEM. Off turns the TV off. Anything else turns it on, and then:\n")
+    a("| It shows | The ATEM | The TV |\n| --- | --- | --- |")
+    for c, (var, number, what) in ATEM_SOURCES.items():
+        a(f"| {c} | The TV's output takes the source in `{var}`, {number} to start with: {what} | HDMI {TV_ATEM_HDMI} |")
+    a(f"| Local HDMI | Nothing | HDMI {TV_LOCAL_HDMI}, the wall plate beside it |")
+    a("| USB | Nothing | Nothing. Simple IP control has no USB input, so someone picks the USB player with the TV's "
+      "remote |\n")
+    a(f"{TV_WAKE_MS / 1000:g} s later, each Send block sends the picture again, because a TV that was off may ignore an "
+      "input change while it wakes. The source numbers are custom variables, so a technician can change them in "
+      "Companion without touching a block. An ATEM numbers its inputs from 1, and 10010 is M/E 1 Program, 10020 M/E 2 "
+      "Program, and so on. [TVs](15-tvs.md) has the settings each TV needs, and the TV sheet, "
+      "[config/network/tvs.csv](../config/network/tvs.csv), lists each TV's address, model and cabling.\n")
+    a("Turn TVs On, on More, turns on every TV that's off with its default. Turn TVs Off turns them all off. The "
+      "night schedule turns every TV off with the lights and the audio, and the startup trigger sends every TV its "
+      "state again.\n")
     a("## Dial speed\n")
     a(f"Every dial speeds up when it's turned quickly. A slow click moves one step: {LIGHT_STEP}% for the lights, "
       f"1 dB for audio. Clicks closer together than `turn_medium_ms` move {TURN_MEDIUM} steps each, and closer than "
@@ -3077,6 +3619,11 @@ def write_doc(count, checks):
     a(library_table(23) + "\n")
     a("### Page 24: Zone switches and Bluetooth\n")
     a(library_table(24) + "\n")
+    a("### Page 25: TVs 1 to 4\n")
+    a("A row for each TV: Send, On, Off, then a block for each thing it can show.\n")
+    a(library_table(25) + "\n")
+    a("### Page 26: TVs 5 to 7, and every TV\n")
+    a(library_table(26) + "\n")
     a("## Triggers\n")
     a("| Trigger | Starts | Does |\n| --- | --- | --- |")
     for t_ in TRIGGERS.values():
@@ -3106,7 +3653,16 @@ def write_doc(count, checks):
       "- **Add a station.** Add the surface in Companion, give it its own surface group starting on page 1, and untick "
       "the pages it shouldn't use. Nothing in the pages changes.\n"
       f"- **Use a different power switch.** Edit `{POWER_ON}` Power On, `{POWER_OFF}` Power Off and the startup "
-      "trigger. Every key that powers the system goes through those two blocks.\n")
+      "trigger. Every key that powers the system goes through those two blocks.\n"
+      f"- **Change what a TV shows when it comes on.** Edit its On block, the second on its first row on pages "
+      f"{TV_LIB_FIRST} to {TV_LIB_FIRST + 3}, to run another Show block on its second row.\n"
+      "- **Change where Stream, Announcements, Custom or SDI come from.** Set `atem_stream`, `atem_announcements`, "
+      "`atem_custom` or `atem_sdi` to another ATEM source number on Companion's Variables page. Every TV follows.\n"
+      "- **Feed a TV from another ATEM output.** Edit the two ATEM actions in its Send block, the first on its first "
+      f"row on pages {TV_LIB_FIRST} to {TV_LIB_FIRST + 3}.\n"
+      "- **Move a TV to another address.** Change the host of its `tv` connection, and the TV sheet.\n"
+      "- **Use other TVs.** Replace the `tv` connections, and the TV actions in each Send block. Every key, the "
+      "schedule and the startup trigger already go through the Send blocks.\n")
     a("After any change, export the configuration from Companion and commit it next to this file. From then on, that export is the "
       "live copy and `build.py` is only a record of the first version.\n")
     DOC.write_text("\n".join(t), encoding="utf-8", newline="\n")
@@ -3188,6 +3744,9 @@ def sample_state(ipad=False):
     s.turn("4/3/2", "right")
     s.press(SCENE_LOC["Music Inside"])
     s.wing[f"bus{MIC_BUS}_level"] = -8.0
+    s.press(TVS_KEY)  # every TV on, then Back Stage off and Cafe switched to the stream
+    s.press(f"{TV_PAGE[7]}/0/0")
+    s.press(f"{TV_PAGE[3]}/0/1")
     if ipad:
         s.press(IPAD_KEY, held=True)
     return s
@@ -3259,15 +3818,19 @@ def main():
         write_doc(len(KEYS), count)
         live, ipad, off = sample_state(), sample_state(ipad=True), sample_state()
         off.press("1/1/0")
+        cafe = TV_PAGE[3]
+        shown = [n for n in DECK_PAGES if n not in TV_PAGE.values()]
         for cards, name, width, height, title, note in (
-                ([(n, f"Page {n}: {PAGES[n][0]}", live) for n in DECK_PAGES]
-                 + [(1, "Home in iPad Mode", ipad), (1, "Home with the audio off", off),
+                ([(n, f"Page {n}: {PAGES[n][0]}", live) for n in shown]
+                 + [(cafe, f"Pages {TV_PAGE[1]} to {TV_PAGE[len(TVS)]}: each TV, here the {PAGES[cafe][0]}", live),
+                    (1, "Home in iPad Mode", ipad), (1, "Home with the audio off", off),
                     (4, "Light Control in iPad Mode", ipad)],
-                 "stream-deck-pages", 1720, 1640, "Stream Deck + pages, shared by every station",
+                 "stream-deck-pages", 1720, 2100, "Stream Deck + pages, shared by every station",
                  "The touch strip shows each dial's value live. Shown with Lights 2 at 80%, music playing inside, "
-                 "the mics at -8 dB, the Fireplace turned off, Chandeliers picked and turned up, and Lobby picked "
-                 "on Audio Zones. The last three cards show the lights locked in iPad Mode, and the audio system "
-                 "off, with the power key red and saying Turn Audio On, and the audio dials greyed out."),):
+                 "the mics at -8 dB, the Fireplace turned off, Chandeliers picked and turned up, Lobby picked "
+                 "on Audio Zones, and every TV on but Back Stage, with the Cafe TV switched to the stream. The last "
+                 "three cards show the lights locked in iPad Mode, and the audio system off, with the power key red "
+                 "and saying Turn Audio On, and the audio dials greyed out."),):
             page = layout(cards, tmp / name, width, title, note)
             target = IMAGES / f"{name}.png"
             chrome(profile, f"--screenshot={target}", f"--window-size={width + 56},{height}",

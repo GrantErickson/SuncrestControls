@@ -6,6 +6,8 @@ Every button talks to Companion. Companion sends the lights itself as Art-Net, a
 
 Companion holds the looks, the Wing Rack holds the zones, and the iPad takes over lighting through the ODE Mk3. The diagram's source is [system-design.svg](images/system-design.svg).
 
+The seven TVs are on the deck too. Companion keeps whether each is on and what it shows, and a TV that comes on shows its default. They're planned as Sony BRAVIA 3 II, each fed by its own output on the production ATEM, a 4 M/E Constellation HD, over SDI. Companion turns each one on or off and picks its input over the network with Sony's Simple IP control, and picks the source on its ATEM output. The diagram leaves them out. [TVs](15-tvs.md) has the plan.
+
 ## Design rules
 
 - **Buttons set a known state.** Whole-room buttons set every zone, which makes reset reliable after someone uses the Wing app. Auditorium, Music, Bluetooth and Lobby Stage also toggle, so pressing a lit one turns its source off. The audio power key turns the whole system off and back on, and is green while it's on and red while it's off.
@@ -22,11 +24,12 @@ Companion holds the looks, the Wing Rack holds the zones, and the iPad takes ove
 | Wing Rack | All lobby audio stops | No fallback, so it must stay powered |
 | WiiM | Playlist stops | Use Bluetooth or the auditorium feed |
 | Network switch | All stations stop responding, and the lights follow the ODE's lost-source behavior | Replace it, and keep it on the UPS |
-| Power relay | The audio power key and the source keys can't turn the amplifiers on or off | Turn the Furman's key to ON, or to OFF at night |
+| Juice Goose | The audio power key and the source keys can't turn the amplifiers on or off | Its recessed slide switch turns every outlet on. Unplug the amplifiers at night |
+| A speaker plug | That powered speaker stays as it was | Press the plug's own button |
 
 The Companion host and the switch now carry the lights, so both stay on the UPS. The startup trigger brings the last look back 5 seconds after Companion starts.
 
-Only the amplifiers are ever switched off. A Furman sequencer powers them, and Companion switches it through a network relay on its remote terminals. The Wing Rack, the WiiM and the Bluetooth receiver stay on, so the controls never lose them and a source plays as soon as the amplifiers are up.
+Only the amplifiers, the powered speakers and gear that only matters with the audio are ever switched off. A Juice Goose iP-1520 sequences the rack's switched outlets, and Kasa smart plugs switch the powered speakers. Companion commands both over the network. The Wing Rack, the WiiM and the Bluetooth receiver stay on, so the controls never lose them and a source plays as soon as the amplifiers are up.
 
 ## Why not Springtree
 
