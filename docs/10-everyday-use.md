@@ -27,8 +27,8 @@ The top row is the lights, the bottom row is the sound, and the dials fine-tune 
 | --- | --- | --- |
 | All Lights | Dims or brightens everything | Lights off or on |
 | Linear | Just the long ceiling lights | Back to normal |
-| Volume | Whatever is playing, such as the music or the auditorium. The panel names it and says Normal, or how far from it | Back to normal |
-| Mics | The mic | Mute or unmute |
+| Volume | Whatever is playing, such as the music or the auditorium. The panel names it and shows its level, as the sound desk does. The white mark is the normal level | Back to normal |
+| Mics | The mic. Turn it all the way down to mute it, and turn it up to bring it back quietly | Mute or unmute |
 
 Green means on and red means off: a green Lights key and a green audio key mean the lights and the sound are both on. The audio key is green while the sound system is on and red while it's off. Auditorium and Music turn the sound system on by themselves, so you never need to turn it on first, and the audio key turns green. Pressing one while the other plays swaps them. The sound starts a few seconds later, once the amplifiers are up.
 
@@ -98,7 +98,7 @@ Every door and the schedule use the new look straight away. If you change your m
 | One place has no sound | Press **More**, then **Audio Zones**, and tap the place. If the switch says **Turn On**, press it |
 | One area of lights is off or wrong | Press **More**, then **Light Control**, tap the area and turn the third dial. Lights 1, 2 or 3 also resets every area |
 | No sound, and the audio key is red | The sound system is off. Press **Auditorium** or **Music**, or **Turn Audio On** to turn it on with nothing playing |
-| Nobody can hear the mic | Check the Mics panel on the rack. If it says **Off**, the sound system is off, so turn it on as above. If it says **Muted**, push the Mics dial |
+| Nobody can hear the mic | Check the Mics panel on the rack. If it says **Off**, the sound system is off, so turn it on as above. If it says **Muted**, push the Mics dial, or turn it up |
 | The Volume or Mics panel says **NO WING** | The rack can't reach the sound desk. Call your technical contact |
 | Music stopped | Open the WiiM Home app and check the internet |
 | A TV shows the wrong thing | Press **More**, **TVs**, then that TV, and press what it should show |

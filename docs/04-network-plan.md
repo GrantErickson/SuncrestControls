@@ -18,7 +18,7 @@ Everything sits on its own AV VLAN, separate from guest Wi-Fi. OSC and Art-Net h
 | AV Wi-Fi access point | 192.168.50.60 | Switch | PoE |
 | Lighting iPad | 192.168.50.70 | AV Wi-Fi | Battery |
 | Wing app iPad | 192.168.50.71 | AV Wi-Fi | Battery |
-| TVs 1 to 7, Sony BRAVIA 3 II, in the order on the TVs page. The [TV sheet](../config/network/tvs.csv) has each one | 192.168.50.81 to .87, proposed | Cat6 to switch | At each TV |
+| TVs 1 to 7, Sony BRAVIA 3 II, in the order on the TVs page. The [TV sheet](../config/network/tvs.csv) has each one | 192.168.50.81 to .87, proposed. For now TV 1 is a Samsung on test at 192.168.0.126 | Cat6 to switch | At each TV |
 | Production ATEM 4 M/E Constellation HD, always on | On the production network. 192.168.10.240, its factory address, is a placeholder in Companion | Routed, UDP 9910 from the Companion host only | Production rack |
 
 1. Create the AV VLAN on the managed switch and give it one untagged port per device above.

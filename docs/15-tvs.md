@@ -1,6 +1,6 @@
 # TVs
 
-The seven TVs are planned as Sony BRAVIA 3 II. The production ATEM, a 4 M/E Constellation HD, feeds each TV from its own output, over SDI to a converter behind the TV, which feeds the TV's HDMI 1. Companion turns each TV on or off and picks its input over the network, using Sony's Simple IP control. For Stream, Announcements, Custom and SDI, it also picks the source on that TV's ATEM output.
+The seven TVs are planned as Sony BRAVIA 3 II. The production ATEM, a 4 M/E Constellation HD, feeds each TV from its own output, over SDI to a converter behind the TV, which feeds the TV's HDMI 1. Companion turns each TV on or off and picks its input over the network, using Sony's Simple IP control. For now the Main Lobby TV is a Samsung home TV on test instead: see [Trying a Samsung home TV](#trying-a-samsung-home-tv). For Stream, Announcements, Custom and SDI, it also picks the source on that TV's ATEM output.
 
 [Stream Deck pages](14-stream-deck-pages.md#tvs) has every key and block, and [Everyday use](10-everyday-use.md#the-tvs) has the volunteer version. The TV sheet, [config/network/tvs.csv](../config/network/tvs.csv), lists each TV's address, ATEM output, model, serial and MAC address. Fill it in as the TVs go up.
 
@@ -19,7 +19,7 @@ The ATEM outputs are confirmed. The defaults are proposals, so confirm or change
 
 | TV | Page | Address | ATEM output | Shows when it comes on | Why |
 | --- | --- | --- | --- | --- | --- |
-| Main Lobby | 8 | 192.168.50.81 | 18 | Announcements | Where most people wait |
+| Main Lobby | 8 | 192.168.50.81. For now, 192.168.0.126, a Samsung on test | 18 | Announcements | Where most people wait |
 | Right Lobby | 9 | 192.168.50.82 | 19 | Announcements | Same |
 | Cafe | 10 | 192.168.50.83 | 20 | Announcements | Same |
 | Entry Hall | 11 | 192.168.50.84 | 21 | Announcements | First thing people see coming in |
@@ -64,7 +64,7 @@ A `tv` connection is green once its TCP connection is open. That shows the TV is
 | Sony BRAVIA Professional Display, such as the BZ30P, BZ35P or BZ40P | Yes. The most dependable | Sony documents its control for these displays. Pro mode locks the menus, they're built for long hours, and their BRAVIA Signage app plays a USB stick |
 | Sony BRAVIA home TV, such as the BRAVIA 3 II | Yes, with the settings below | The same Simple IP control. Home firmware can bring update prompts, sign-in screens and changed settings, and Sony documents Simple IP control for its professional displays, so try it on the first TV before ordering the rest |
 | Samsung commercial display, such as the QB, QM or QH series | Yes | Companion's Samsung Display module uses Samsung's MDC protocol on TCP port 1515, with power, input and status. It can pick the USB player directly |
-| Samsung home TV | No | Its Companion module can only send remote-control key presses. It needs a pop-up on the TV accepted to pair, turns on by Wake-on-LAN, and firmware updates have broken it before |
+| Samsung home TV | No, until the test says otherwise | Its Companion module can only send remote-control key presses. It needs a pop-up on the TV accepted to pair, turns on by Wake-on-LAN, and firmware updates have broken it before. One is on test as the Main Lobby TV: see [Trying a Samsung home TV](#trying-a-samsung-home-tv) |
 
 ## Setting up each BRAVIA 3 II
 
@@ -79,6 +79,51 @@ Sony moves these menus between firmware versions, so the names may differ a litt
 7. **Record it.** Put the serial number and firmware version in the TV sheet.
 
 Then turn the TV off and on from the deck, and try each input.
+
+## Trying a Samsung home TV
+
+For now the Main Lobby TV, `tv1`, is a Samsung home TV on test: a 50" UN50U8000FDXZA, a 2025 Crystal UHD U8000F on Tizen. It's wired, at 192.168.0.126 on the same network as the Wing, and calls itself Office TV. The other six stay on Sony's Simple IP control. The test shows whether a Samsung home TV is good enough for the lobby, against the "No" in the table above.
+
+The TV answers Samsung's home-TV remote API on ports 8001 and 8002 and asks for a pairing token. Port 1515 is closed, so it doesn't speak MDC like Samsung's commercial displays. `tv1` uses Companion's [Samsung Smart TV module](https://github.com/bitfocus/companion-module-samsung-smarttv), samsung-smarttv 1.0.0, on port 8002 with **Limit TLS to 1.2** on, and MAC address b0:f2:f6:38:9b:73 for Wake-on-LAN.
+
+| The deck asks for | The module does |
+| --- | --- |
+| On | Nothing if the TV is on. Presses Power if it's in standby. Sends Wake-on-LAN if it's fully off, then waits up to 30 seconds for the TV to answer |
+| Off | Presses Power, only if the TV is on, since Power toggles |
+| HDMI 1, the ATEM | Presses the remote's `KEY_HDMI1` |
+| HDMI 2, the wall plate | Presses `KEY_HDMI2` |
+
+A Samsung that was fully off takes longer to wake, so its Send block sends the picture again after 8 seconds, not 3. USB only turns it on, as on the Sonys.
+
+### On the TV first
+
+Samsung moves these menus between years, so the names may differ a little.
+
+1. **Pairing prompt.** Under **Settings**, **All Settings**, **Connection**, **External Device Manager**, **Device Connect Manager**, set **Access Notification** to **First Time Only**. With **Always Ask**, the TV asks every time Companion connects.
+2. **Turning on over the network.** Under **Connection**, **Network**, **Expert Settings**, turn **Power On with Mobile** on. Turn **IP Remote** on too, if the menu has it.
+3. **Staying on.** Under **General & Privacy**, **Power and Energy Saving**, turn off **Auto Power Off** and anything else that turns the TV off by itself.
+4. **Address.** Reserve 192.168.0.126 in DHCP by its MAC address.
+
+### Pairing
+
+1. Import [lobby.companionconfig](../config/stream-deck/lobby.companionconfig). If `tv1` says its module is missing, install **Samsung: Smart TV** on Companion's Modules page.
+2. With the TV on, it shows a pop-up asking to allow **Bitfocus Connection**. Choose **Allow** within about 30 seconds.
+3. The module saves the TV's token in `tv1`'s **Pairing Token**, so the TV won't ask again. The token isn't in the repo. To pair again, clear that field and save.
+
+If the TV keeps asking, check **Limit TLS to 1.2** is on in `tv1`. `$(tv1:power_state)` on the Variables page reads on, standby, or off when the TV doesn't answer at all.
+
+### The test
+
+On the deck, open **TVs**, then **Main Lobby**:
+
+1. With the TV on, choose **Local HDMI**, then **Stream**. The TV should go straight to HDMI 2, then HDMI 1.
+2. Turn it off with its switch, wait a minute, then choose **Announcements**. It should come on and go to HDMI 1.
+3. Leave it off for half an hour, so it's fully asleep, then turn it on from the deck. That's Wake-on-LAN.
+4. Unplug it for a minute, plug it back in, and turn it on from the deck.
+
+Watch `tv1`'s log on the Connections page. Write what happened in the [TV sheet](../config/network/tvs.csv)'s Status and Notes. The open questions are whether `KEY_HDMI1` and `KEY_HDMI2` go straight to those inputs on this model (some Samsungs only step through inputs with the Source key), whether it wakes from fully off, and whether firmware updates bring prompts.
+
+To put the Main Lobby TV back on Sony's Simple IP, take TV 1 out of `SAMSUNG_TVS` in [build.py](../config/stream-deck/build.py) and build again.
 
 ## The ATEM
 
@@ -105,6 +150,18 @@ Each TV has two rows in the Library, two TVs to a page on pages 25 to 28. The fi
 USB is the one key that doesn't reach the TV. It turns the TV on and lights the key, and someone picks the USB stick with the TV's remote. Simple IP control can choose HDMI inputs but not the USB player, and the BRAVIA 3 II has no signage app to start playback by itself.
 
 The key stays. For content that has to start without the remote, the SDI key brings in another ATEM source.
+
+The Samsung on test is no different. Its Companion module can only press remote keys, the remote has no USB key, and the TV has no command to open a folder or start a slideshow. A run of key presses that walks the Source menu to the stick might work, but it breaks whenever the menu or the TV's state differs. Samsung's home TVs also don't start a USB slideshow when they turn on. A slideshow that a key can start needs a player that starts one by itself, feeding the TV's HDMI 2, so the key is Local HDMI, or slides fed through the ATEM, so the key is Announcements, Custom or SDI.
+
+### Putting photos on a stick
+
+For a slideshow started with the TV's remote, on the Samsung or any TV:
+
+1. **Format.** exFAT, or FAT32 for the widest support. Samsung's recent TVs also read NTFS. Plug the stick straight into the TV, not through a hub.
+2. **Images.** JPEG, 16:9, at 3840 x 2160 for a 4K TV or 1920 x 1080. PNG and BMP work too. Slides from PowerPoint, Keynote or Canva export straight to JPEG at that size.
+3. **One folder.** Put them all in one folder at the top of the stick, such as `Slides`, with nothing else in it and no folders inside. Samsung's TVs show up to 1,000 files in a folder.
+4. **Order.** Number the names with leading zeros, such as `01 Welcome.jpg`, `02 Events.jpg`, and sort by name on the TV. A Mac leaves hidden `._` files on a stick, which can show up as blank photos, so eject it properly.
+5. **On the TV.** Choose the stick from **Source**, open the folder, open the first photo, and start the slideshow from the controls on screen. Set the speed, and turn **Repeat** on so it loops. It stops when the TV turns off.
 
 ## Still to decide
 

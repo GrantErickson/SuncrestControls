@@ -24,13 +24,16 @@ Companion holds the button layouts, the logic and the lights. Every page, artwor
 
 | Connection | Module | Settings in the file |
 | --- | --- | --- |
-| `wing` | [behringer-wing](https://github.com/bitfocus/companion-module-behringer-wing) | Desk IP 192.168.0.30, desk type Wing Rack |
+| `wing` | [behringer-wing](https://github.com/bitfocus/companion-module-behringer-wing), a stable release, 2.2 or 2.3 | Desk IP 192.168.0.30, desk type Wing Rack |
 | `dmx` | [generic-artnet](https://github.com/bitfocus/companion-module-generic-artnet) | Receiver 192.168.50.31, the ODE, universe 0 |
 | `wiim` | [generic-http](https://github.com/bitfocus/companion-module-generic-http) | Base URL `https://192.168.50.40/`, unauthorized certificates accepted |
 | `power` | [generic-tcp-udp](https://github.com/bitfocus/companion-module-generic-tcp-udp) | UDP to 192.168.50.45, port 30333, the Juice Goose iP-1520 that sequences the rack's switched outlets |
 | `speaker1`, `speaker2` | [tplink-kasasmartplug](https://github.com/bitfocus/companion-module-tplink-kasasmartplug) | Plug IP 192.168.50.46 and 192.168.50.47, network scan off, polling on. The Kasa plugs on the powered speakers |
 | `atem` | [bmd-atem](https://github.com/bitfocus/companion-module-bmd-atem) | Placeholder address 192.168.10.240, the ATEM's factory address, model 4 M/E Constellation HD. The production ATEM, which feeds each TV from its own output |
-| `tv1` to `tv7` | [generic-tcp-udp](https://github.com/bitfocus/companion-module-generic-tcp-udp) | TCP to 192.168.50.81 to .87, port 20060, Sony's Simple IP control. The Sony BRAVIA 3 II TVs |
+| `tv2` to `tv7` | [generic-tcp-udp](https://github.com/bitfocus/companion-module-generic-tcp-udp) | TCP to 192.168.50.82 to .87, port 20060, Sony's Simple IP control. The Sony BRAVIA 3 II TVs |
+| `tv1`, for now | [samsung-smarttv](https://github.com/bitfocus/companion-module-samsung-smarttv) | 192.168.0.126, port 8002, Limit TLS to 1.2, MAC b0:f2:f6:38:9b:73. A Samsung home TV on test as the Main Lobby TV. The first time, choose **Allow** on the TV. See [TVs](15-tvs.md#trying-a-samsung-home-tv) |
+
+The Wing module's stable releases can't take expressions in their options, so every dial sets its fader from a variable instead: the level box's **Use Variables** is ticked, with a variable such as `$(custom:mic_level)`. Leave it that way. Version 2.4 converts these by itself when it's installed.
 
 The WiiM uses a self-signed certificate, which is why the file accepts it. The file holds pages, variables, triggers, connections, 173 artwork images, the Elgato Stream Deck surface integration, and four surface groups. It doesn't hold the decks themselves or passwords, so add those next. Replace the ATEM's placeholder address in `atem` once the real one is known. The TVs need no key. [TVs](15-tvs.md#setting-up-each-bravia-3-ii) has the settings on each TV, and the [TV sheet](../config/network/tvs.csv) lists them.
 
@@ -118,11 +121,11 @@ The touch strip shows each dial's value and a level bar above it. The first two 
 | --- | --- | --- |
 | All Lights | Every light, 5% a click | Lights off, or back on |
 | Linear | Just the linear lights, 5% a click | Back to the look's level |
-| Volume | Whatever is playing, 1 dB a click, up to 26 dB over normal. The panel names it and reads Normal, or how far from it | What's playing back to normal |
+| Volume | Whatever is playing, along the Wing fader's own scale, from -60 to +10 dB. The panel names it and reads its fader level as the Wing does | What's playing back to normal, -20 dB |
 | Area, on Light Control | The picked area, 5% a click. With the lights off, turning up brings that area on by itself | That area back to the look's level |
-| Bluetooth, on Audio Source | Bluetooth's level, 1 dB a click, playing or not, up to 26 dB over normal | Bluetooth back to normal |
+| Bluetooth, on Audio Source | Bluetooth's level, playing or not, along the Wing fader's own scale like Volume | Bluetooth back to normal, -20 dB |
 | Zone, on Audio Zones | The picked zone, 1 dB a click | That zone back to its normal level |
-| Mics | The mic, Wing channel 1, 1 dB a click, up to 0 dB | Mute or unmute the mic |
+| Mics | The mic, Wing channel 1, along the Wing fader's own scale like Volume, from -80 to +10 dB. One more click down mutes it, and turning up from muted brings it back at -80 dB | Mute the mic, or unmute it at the level it had |
 
 Every dial speeds up when it's turned quickly. A slow click moves one step, as above. Clicks less than 120 ms apart move 2 steps each, and less than 50 ms apart move 4. Turning the other way, or another dial, starts slow again, and levels still stop at their limits. Each turn works this out from Companion's `$(this:delta)`, the clicks the deck reported, and the time since the last click.
 
@@ -130,11 +133,13 @@ While the audio system is off, the Volume, Mics, Bluetooth and Zone dials do not
 
 To change the feel, set `turn_medium_ms` and `turn_fast_ms` on the Variables page. Raise them to speed up sooner, or set both to 0 for one step a click. [Stream Deck pages](14-stream-deck-pages.md#dial-speed) has the details.
 
+The Wing module reports a level only once the Wing has been quiet for a tenth of a second, so while a dial turns, the Wing's report is behind the clicks already sent. So once a dial starts turning, its clicks work from Companion's own copy of the level, and its panel shows that copy. That lasts until the **Wing refresh** trigger next runs after the dial has been still for `turn_settle_ms`, 1000 ms to start. Every 2 seconds, the refresh asks the Wing for each level and mute the panels show, waits half a second for the answers, and then hands the panels back to the Wing. So a change made on the Wing shows on the deck within about 2 seconds of the dial going still, and at once after that. If the Wing's fader still jumps back during a turn, raise `turn_settle_ms`.
+
 Tapping a Lights key plays it. Holding one for 3 seconds saves the lights as they are now into it, and the key turns green and says Saved.
 
-The Volume dial controls whatever is playing, as the source of the first zone that's on: the auditorium feed on Bus 14, music on Bus 15, Bluetooth on Bus 16, or the lobby stage on Main 1. The panel's title names it. Normal is -20 dB on that fader, so the dial has 26 dB to go up before it stops at +6 dB, and 40 dB to go down to -60 dB. Room buttons put Bus 14 and 15 back to normal. They leave Bus 16 at the level the Bluetooth dial set, and Main 1 to whoever is mixing the band.
+The Volume dial controls whatever is playing, as the source of the first zone that's on: the auditorium feed on Bus 14, music on Bus 15, Bluetooth on Bus 16, or the lobby stage on Main 1. The panel's title names it. The dial follows the Wing fader's own scale, so turning it is like sliding that fader: each click moves the same distance along the fader's travel, which is 1 dB above -10 dB, 2 dB from -10 to -30 dB and 4 dB from -30 to -60 dB. It stops at +10 dB, the top of the fader, and at -60 dB. The panel shows the fader's level as the Wing does, such as -20 dB or +3 dB, and fills its bar to where the Wing's fader sits. The white tick marks normal, -20 dB. The Bluetooth dial works the same way. Room buttons put Bus 14 and 15 back to normal. They leave Bus 16 at the level the Bluetooth dial set, and Main 1 to whoever is mixing the band.
 
-Companion keeps its own copy of every zone level, each source fader, the mic level and the mic mute, and moves the Wing in step. When the Wing reports a level, the panels show the Wing's. When it doesn't, as on a desk with no Wing, the dials still move and the panels show Companion's copy, with an orange **NO WING** badge on the Volume and Mics panels.
+Companion keeps its own copy of every zone level, each source fader, the mic level and the mic mute, and moves the Wing in step. When the Wing reports a level, the panels show the Wing's, except while their dial is turning. When it doesn't, as on a desk with no Wing, the dials still move and the panels show Companion's copy, with an orange **NO WING** badge on the Volume and Mics panels.
 
 The keys don't show Companion's status marks, such as the red ! for a device it can't reach or the green arrow while a key's actions run. The NO WING badge and the Connections page cover that instead.
 
@@ -204,9 +209,11 @@ Any station that can open More can leave iPad Mode. Lock the doors out of More t
 
 **Close Up** is a Library block, `22/2/6`, that turns off the lights, every TV and the audio system and leaves iPad Mode, so the doors can't stay locked. The night schedule runs it, and no key does. To shut down by hand, press **Lights Off** and **Turn Audio Off** on Home, and **Turn TVs Off** on More.
 
-## The startup trigger
+## The startup and Wing refresh triggers
 
 Companion sends the lights, so a restart matters. Five seconds after Companion starts, the **Startup recovery** trigger fades the lights back to where they were. In iPad Mode it keeps Companion's light output at zero. It also sends the audio power state to the Juice Goose and the speaker plugs again, so they agree.
+
+The **Wing refresh** trigger runs every 2 seconds. Unless an audio dial is turning, it asks the Wing for the mic's level and mute, each source fader and each zone fader. That keeps the panels following the Wing even if the Wing's own report of a change goes missing. Leave it on.
 
 ## Turn on the schedule after launch
 

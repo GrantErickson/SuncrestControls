@@ -2,7 +2,7 @@
 
 Speaker zones live in Wing Rack matrices, so no extra audio processor is needed. Each source has its own bus, and each zone picks one source by turning sends on and off. Companion only changes sends, mutes and faders, so the operator's mix stays untouched.
 
-The mic is the exception to one source per zone. It's on channel 1, and its own bus, Bus 13, feeds it to every zone all the time, so someone can talk over the music or the auditorium feed. The rack's Mics dial moves channel 1's fader, and pushing the dial mutes channel 1.
+The mic is the exception to one source per zone. It's on channel 1, and its own bus, Bus 13, feeds it to every zone all the time, so someone can talk over the music or the auditorium feed. The rack's Mics dial moves channel 1's fader from -80 to +10 dB, along the fader's own scale, and pushing the dial mutes channel 1. Turning it down past -80 dB mutes channel 1 too, and turning it up from muted brings the mic back at -80 dB, so it fades in as the dial turns.
 
 The [Wing Rack](https://thomannmusic.com/behringer_wing_rack.htm) has 8 matrices and 8 analog outputs. These zones use 7 outputs, which leaves 1 spare.
 
@@ -59,7 +59,7 @@ No zone listens to Bluetooth by default, so a stray pairing plays nowhere.
 3. On the ROUTING screen, assign the three input pairs to Aux 1, 2 and 3 as stereo. Name them AUD FEED, PLAYLIST and BLUETOOTH.
 4. Take Aux 1 to 3 out of Main 1. The operator's mix should not contain them.
 5. Send Aux 1 to Bus 14, Aux 2 to Bus 15 and Aux 3 to Bus 16, each at 0 dB.
-6. Name those buses SRC AUD, SRC MUSIC and SRC BT. Set their faders to -20 dB and take them out of Main 1. -20 dB is normal, which leaves the Volume dial 26 dB to go up before it stops at +6 dB. The Volume dial moves the fader of whichever is playing, and room buttons put the auditorium and music buses back to -20 dB. Bluetooth keeps the level its own dial on Audio Source set.
+6. Name those buses SRC AUD, SRC MUSIC and SRC BT. Set their faders to -20 dB and take them out of Main 1. -20 dB is normal. The Volume dial can take a source fader from -60 dB up to +10 dB, the top of the fader. The Volume dial moves the fader of whichever is playing, and room buttons put the auditorium and music buses back to -20 dB. Bluetooth keeps the level its own dial on Audio Source set.
 7. Send channel 1, the mic, to Bus 13, post-fader, and take it out of Main 1. Name Bus 13 MICS. Set channel 1's fader to -10 dB, where the Mics dial starts. Step 14 sets Bus 13's fader, and Companion never moves it. While the Lobby Stage plays, the band reaches the zones through Main 1 and the mic through Bus 13, so it never arrives twice.
 8. Name Matrix 1 to 5 after the zones above. Set Matrix 3, 4 and 5 to mono.
 9. On every zone matrix, set the sends from Bus 14, Bus 15, Bus 16 and Main 1 to 0 dB, then turn them off. That is 20 sends.
@@ -67,7 +67,7 @@ No zone listens to Bluetooth by default, so a stray pairing plays nowhere.
 11. On the ROUTING screen, assign Local outputs 1 to 7 as listed above.
 12. Add zone EQ, delay and a limiter on each matrix. The two entries will need different tuning from the lobby.
 13. Play the Wing's oscillator as pink noise through each zone. With the matrix fader at 0 dB, set the amp gain to the loudest level you would ever accept.
-14. With the mic in the room and channel 1's fader at 0 dB, set Bus 13's fader just below feedback in the loudest zone, and leave it there. The Mics dial stops channel 1 at 0 dB, so a volunteer can't push the mic into feedback.
+14. With the mic in the room and channel 1's fader at +10 dB, the top of the Mics dial, set Bus 13's fader just below feedback in the loudest zone, and leave it there. The Mics dial stops channel 1 at +10 dB, so a volunteer can't push the mic into feedback.
 15. Save this as a snapshot called Lobby Base, and keep a copy in the repo.
 
 ## Audio power

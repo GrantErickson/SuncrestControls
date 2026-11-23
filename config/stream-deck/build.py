@@ -62,6 +62,15 @@ TV_ATEM_HDMI = 1   # the TV input the ATEM feeds, through the converter
 TV_LOCAL_HDMI = 2  # the TV input the HDMI wall plate beside it feeds
 TV_WAKE_MS = 3000  # a TV that was off may ignore an input change while it wakes, so its input is sent again this
                    # long after it's told to come on
+# TVs on Samsung's home-TV remote API, through the samsung-smarttv module, instead of Sony's Simple IP: number, then
+# address and MAC address for Wake-on-LAN. TV 1 is a test (the user, 2026-11-23): a Samsung UN50U8000FDXZA, a 2025
+# Crystal UHD U8000F on Tizen, named Office TV, wired, on the 192.168.0 network like the Wing. Its MAC is the one it
+# reports and the one the network sees. Take a TV out of here to put it back on Sony's Simple IP
+SAMSUNG_TVS = {1: ("192.168.0.126", "b0:f2:f6:38:9b:73")}
+SAMSUNG_PORT = 8002      # the TV's secure remote socket. The first time, the TV asks to allow Companion, then gives a
+                         # token, which the module keeps in its connection's Pairing Token
+SAMSUNG_WAKE_MS = 8000   # a Samsung fully off wakes by Wake-on-LAN and boots before it takes keys, so its input is
+                         # sent again this long after it's told to come on
 
 ZONES = [  # number, name, matrix, normal fader in dB, icon. Audio Zones shows them in this order
     (1, "Lobby", 1, -6, "lobby"),
@@ -146,21 +155,55 @@ LIGHT_STEP = 5         # percent per dial step
 TURN_MEDIUM_MS, TURN_FAST_MS = 120, 50  # starting values: clicks closer together than these count as a quicker turn
 TURN_MEDIUM, TURN_FAST = 2, 4           # steps per click when the dial turns at medium or fast speed
 TURN_MAX = 8                            # the most steps one report from the dial can make
+TURN_SETTLE_MS = 1000  # starting value: a dial clicked again within this many ms works from Companion's copy of its level
+WING_POLL_S = 2        # how often Companion asks the Wing for the levels and mutes the panels show
+WING_POLL_WAIT_MS = 500  # how long after asking it waits for the Wing's answers to reach the module's variables
+AUDIO_DIALS = ("vol", "bt", "zone", "mic")
 FADE_MS, QUICK_MS = 2000, 150
 IPAD_HOLD_MS = 1000
 SAVE_HOLD_MS = 3000
 CLOSE_HOLD_MS = 1500
 SAVED_MS = 2000
 VOL_MIN, VOL_MAX = -60, 0          # every zone fader stays inside this range
-SRC_MIN, SRC_MAX = -60, 6          # the Volume dial moves the playing source's fader inside this range
-SRC_NORMAL = -20                   # a source fader's normal level, which the panels call Normal. Leaves 26 dB to go up
+SRC_MIN, SRC_MAX = -60, 10         # the Volume and Bluetooth dials keep a source fader inside this range. +10 dB is the
+                                   # top of the Wing's fader, and -60 dB its lowest mark above -oo
+SRC_NORMAL = -20                   # a source fader's normal level, marked on its panel's bar
+FADER_STEP = 2.5                   # percent of the fader's travel a source dial moves for each step, like sliding the
+                                   # Wing's fader: 1 dB near the top, 2 dB from -10 to -30 dB, 4 dB from -30 to -60 dB
+
+
+# The Wing's fader law, as the Wing module uses it for fades (transitions.ts, dbToFloat and floatToDb): where a level
+# sits along the fader's travel, 0 at the bottom and 1 at the top. +10 to -10 dB fill the top half, -10 to -30 dB the
+# next quarter, -30 to -60 dB the next 3/16, and -60 to -90 dB the last 1/16, below which it reads -oo
+def dbs(x):
+    """A level in words, with its sign: +10, 0, -20."""
+    return f"+{x:g}" if x > 0 else f"{x:g}"
+
+
+def fader_pos(db):
+    return ((db + 90) / 480 if db < -60 else (db + 70) / 160 if db < -30 else (db + 50) / 80 if db < -10
+            else (db + 30) / 40)
+
+
+def fader_pos_x(level):
+    """fader_pos as a Companion expression. `level` should be a short name, since it appears seven times."""
+    return (f"({level} < -60 ? ({level} + 90) / 480 : ({level} < -30 ? ({level} + 70) / 160 : "
+            f"({level} < -10 ? ({level} + 50) / 80 : ({level} + 30) / 40)))")
+
+
+def fader_db_x(f):
+    """The level at a point along the fader's travel, as a Companion expression."""
+    return (f"({f} >= 0.5 ? {f} * 40 - 30 : ({f} >= 0.25 ? {f} * 80 - 50 : "
+            f"({f} >= 0.0625 ? {f} * 160 - 70 : {f} * 480 - 90)))")
 VOLUME_SOURCES = [  # zone source, its Wing fader, the variable that keeps it, panel title, color
     ("Auditorium", "/bus/14", "aud_level", "AUDITORIUM", "audio"),
     ("Playlist", "/bus/15", "music_level", "MUSIC", "music"),
     ("Bluetooth", "/bus/16", "bt_level", "BLUETOOTH", "audio"),
     ("Lobby Stage", "/main/1", "lobby_level", "LOBBY STAGE", "audio"),
 ]
-MIC_MIN, MIC_MAX = -60, 0
+MIC_MIN, MIC_MAX = -80, 10  # the Mics dial's range (the user, 2026-11-23). +10 dB is the top of the Wing's fader.
+                            # Turning down past MIC_MIN mutes the mic, and turning up while it's muted brings it back
+                            # at MIC_MIN. The dial moves along the fader's travel, so the quiet end goes by quickly
 MIC_START = -10                    # channel 1's level in the Lobby Base snapshot
 
 ACCENTS = {  # one color per kind of key. Every tile, bar and ring color is worked out from these
@@ -271,24 +314,43 @@ def wiim(command):
                   jsonResultDataVariable="", result_stringify=True, statusCodeVariable="")
 
 
+# The Wing module's stable releases, 2.2 and 2.3, are built on Companion's 1.x module API, so Companion doesn't work
+# out expressions in their options: an expression reaches the module as its text, which it can't read as a number, and
+# the action does nothing. A computed value reaches them as a variable, through an option's Use Variables box, the
+# <id>_use_variables and <id>_variables pair. They have one upgrade script. The 2.4 alpha adds a second that turns those
+# pairs into expressions, so the index stays at 0 for that script to run when 2.4 is installed
+WING_UPGRADE = 0
+
+
 def wing_send(src, mx, on):
-    return action("wing", "set-send-mute", src=src, dest=f"/mtx/{mx}", mainDest=f"/mtx/{mx}",
+    return action("wing", "set-send-mute", upgrade=WING_UPGRADE, src=src, dest=f"/mtx/{mx}", mainDest=f"/mtx/{mx}",
                   mute="0" if on else "1")
 
 
 def wing_mute(sel, muted):
-    return action("wing", "set-mute", sel=sel, mute={True: "1", False: "0", None: "-1"}[muted])
+    return action("wing", "set-mute", upgrade=WING_UPGRADE, sel=sel,
+                  mute={True: "1", False: "0", None: "-1"}[muted])
 
 
 FADE = dict(fadeDuration=0, fadeAlgorithm="linear", fadeType="ease-in-out")
 
 
 def wing_level(sel, db):
-    return action("wing", "set-fader", sel=sel, level=db, **FADE)
+    return action("wing", "set-fader", upgrade=WING_UPGRADE, sel=sel, level=db, **FADE)
 
 
-def wing_delta(sel, db):
-    return action("wing", "fader-delta", sel=sel, delta=db, **FADE)
+def wing_query(path):
+    """Asks the Wing for a value. A path with no argument is a question, and the Wing's answer updates the module's
+    variable, as when it fetches them at startup."""
+    return action("wing", "send-command", upgrade=WING_UPGRADE, cmd=path)
+
+
+def wing_level_from(sel, var):
+    """Sets a fader to the level in a custom variable, which Companion fills in before the module sees it. Unlike the
+    module's Adjust Fader Level, it doesn't need the module to know the fader's level already: the stable releases
+    never fetch the buses' levels by themselves."""
+    return action("wing", "set-fader", upgrade=WING_UPGRADE, sel=sel, level=0, level_use_variables=True,
+                  level_variables=f"$(custom:{var})", **FADE)
 
 
 def dmx_send(ms):
@@ -331,14 +393,37 @@ def sony(n, command):
     return action(f"tv{n}", "send", id_send=command, id_end="\n")
 
 
+def tv_ip(n):
+    return SAMSUNG_TVS[n][0] if n in SAMSUNG_TVS else TV_IP.format(n)
+
+
+def tv_wake_ms(n):
+    return SAMSUNG_WAKE_MS if n in SAMSUNG_TVS else TV_WAKE_MS
+
+
+def tv_power(n, on):
+    """Turns TV n on or off. A Samsung's module checks first: it wakes a TV that's fully off by Wake-on-LAN, presses
+    Power on one in standby, and does nothing if the TV is already that way, since its Power key toggles."""
+    if n in SAMSUNG_TVS:
+        return action(f"tv{n}", "power", power="powerOn" if on else "powerOff")
+    return sony(n, TV_POWER["power_on" if on else "power_off"])
+
+
 def tv_input(n, port):
-    """HDMI is input type 1, then the port in four digits."""
+    """Sony: HDMI is input type 1, then the port in four digits. Samsung: the remote's key for that HDMI input."""
+    if n in SAMSUNG_TVS:
+        return action(f"tv{n}", "sendButton", remoteButton=f"KEY_HDMI{port}")
     return sony(n, f"*SCINPT00000001{port:08d}")
 
 
 def tv_said(options):
-    """What a Simple IP message tells a TV, in words: power_on, power_off or hdmi<port>. Anything else, or a message
+    """What a TV action tells a TV, in words: power_on, power_off or hdmi<port>. Anything else, or a Simple IP message
     that isn't 24 bytes with its line feed, comes back as itself so a check fails."""
+    if "power" in options:  # Samsung
+        return {"powerOn": "power_on", "powerOff": "power_off"}.get(options["power"], options["power"])
+    if "remoteButton" in options:
+        key = options["remoteButton"]
+        return f"hdmi{key[8:]}" if re.fullmatch(r"KEY_HDMI\d", key) else key
     cmd, end = options["id_send"], options["id_end"]
     if len(cmd + end) != 24 or end != "\n":
         return cmd
@@ -368,8 +453,8 @@ def tv_picture(n):
 def tv_send(n):
     """Everything TV n's Send block does: off, or on and showing what tv<n>_src says, then the picture again once
     a TV that was off has woken."""
-    return [when(f"$(custom:tv{n}_src) == 'Off'", [sony(n, TV_POWER["power_off"])],
-                 [sony(n, TV_POWER["power_on"]), tv_picture(n), wait(TV_WAKE_MS), tv_picture(n)])]
+    return [when(f"$(custom:tv{n}_src) == 'Off'", [tv_power(n, False)],
+                 [tv_power(n, True), tv_picture(n), wait(tv_wake_ms(n)), tv_picture(n)])]
 
 
 # ---------------------------------------------------------------- expressions
@@ -409,9 +494,31 @@ def turn_speed(key):
             f"min({TURN_MAX}, c * f)")
 
 
+def last_dial(*dials):
+    """True while one of these dials, either way, was the last to click."""
+    return "(" + " || ".join(f"$(custom:turn_key) == '{d}{way}'" for d in dials for way in "+-") + ")"
+
+
+def recent(*dials):
+    """True while one of these dials, either way, was the last to click, within `turn_settle_ms`. It reads the clock,
+    so it belongs only where Companion runs it fresh: in a set expression, or a condition inside actions. A panel or a
+    trigger's condition is worked out again only when a variable it read changes, never because time passed."""
+    return f"({last_dial(*dials)} && unixNow() - $(custom:turn_ms) < $(custom:turn_settle_ms))"
+
+
 def turned(key):
-    """The first actions of every dial turn: work out its speed, then remember when and which way it turned."""
-    return [setexpr("turn_n", turn_speed(key)), setexpr("turn_ms", "unixNow()"), setvar("turn_key", key)]
+    """The first actions of every dial turn: work out its speed and whether it carries on a turn of the same dial,
+    one the Wing refresh hasn't run since, then remember when and which way it turned."""
+    return [setexpr("turn_n", turn_speed(key)), setexpr("turn_held", f"{copied(key[:-1])} ? 1 : 0"),
+            setexpr("turn_ms", "unixNow()"), setvar("turn_key", key)]
+
+
+SAID = {}  # plain words for the long expressions the helpers below build, for the generated reference
+
+
+def said(expression, words):
+    SAID[expression] = words
+    return expression
 
 
 def plays(source):
@@ -435,9 +542,40 @@ def tracked(wing_var, custom):
     return f"({wing_var} == '-oo' ? -90 : (isNumber({wing_var}) ? {wing_var} : $(custom:{custom})))"
 
 
+# The Wing module reports a level only once the Wing has been quiet for 100 ms, so while a dial turns, the report is
+# behind the clicks already sent, and if the Wing doesn't report the changes Companion makes, it stays behind. So from
+# a dial's first click until the next Wing refresh after the dial has been still for turn_settle_ms, its clicks
+# (turn_held) and its panel use Companion's copy. The refresh asks the Wing for its levels, waits for the answers,
+# then sets wing_poll. After that the dial's next click and its panel go by the Wing again, so a change made on the
+# Wing shows up. Companion records only the variables a panel's
+# expression read when it was last worked out, and works it out again only when one of those changes. So a panel tests
+# turn_ms against wing_poll, which it always reads, rather than the clock, which changes nothing
+HELD = "$(custom:turn_held) == 1"
+
+
+def turning(now, var):
+    """The level a dial click works from: Companion's copy while the turn carries on, otherwise the Wing's, rounded."""
+    return f"({HELD} ? $(custom:{var}) : round({now}))"
+
+
+def copied(*dials):
+    """True while a panel should show Companion's copy: one of these dials has clicked since the last Wing refresh."""
+    return f"($(custom:turn_ms) > $(custom:wing_poll) && {last_dial(*dials)})"
+
+
+def shown(now, var, *dials):
+    """The level a panel shows: Companion's copy while its dial is turning, otherwise the Wing's."""
+    return f"({copied(*dials)} ? $(custom:{var}) : {now})"
+
+
 ZONE_NOW = {z: tracked(f"$(wing:mtx{mx}_level)", f"z{z}_level") for z, _, mx, *_ in ZONES}
+ZONE_SHOWN = {z: shown(ZONE_NOW[z], f"z{z}_level", "zone") for z, *_ in ZONES}
 MIC_NOW = tracked(f"$(wing:ch{MIC_CH}_level)", "mic_level")
-MIC_MUTED = f"(isNumber($(wing:ch{MIC_CH}_mute)) ? $(wing:ch{MIC_CH}_mute) : $(custom:mic_muted)) == 1"
+MIC_MUTED = f"((isNumber($(wing:ch{MIC_CH}_mute)) ? $(wing:ch{MIC_CH}_mute) : $(custom:mic_muted)) == 1)"
+MIC_LEVEL = said(turning(MIC_NOW, "mic_level"), "its level")
+MIC_MUTED_TURN = said(f"({HELD} ? $(custom:mic_muted) == 1 : {MIC_MUTED})", "the mic is muted")
+MIC_SHOWN = shown(MIC_NOW, "mic_level", "mic")
+MIC_MUTED_SHOWN = said(f"({copied('mic')} ? $(custom:mic_muted) == 1 : {MIC_MUTED})", "the mic is muted")
 WING_ONLINE = "isNumber($(wing:mtx1_level)) || $(wing:mtx1_level) == '-oo'"
 
 
@@ -453,6 +591,7 @@ CUR_SRC = f"({POWERED} ? ({_first_source()}) : 'Off')"
 PICKED_SRC = pick_chain(ZONE_PICK, {z: f"$(custom:z{z}_src)" for z, *_ in ZONES}, "'Off'")
 SRC_NOW = {name: tracked(f"$(wing:{sel.strip('/').replace('/', '')}_level)", var)
            for name, sel, var, _, _ in VOLUME_SOURCES}
+SRC_SHOWN = {name: shown(SRC_NOW[name], var, "vol", "bt") for name, _, var, _, _ in VOLUME_SOURCES}
 
 
 def plays_next(source):
@@ -466,7 +605,7 @@ def with_source(body):
     """An expression that first works out the playing source (c) and its fader level (v)."""
     chain = "0"
     for name, *_ in reversed(VOLUME_SOURCES):
-        chain = f"c == '{name}' ? {SRC_NOW[name]} : ({chain})"
+        chain = f"c == '{name}' ? {SRC_SHOWN[name]} : ({chain})"
     return f"c = {CUR_SRC};\nv = {chain};\n{body}"
 
 
@@ -484,20 +623,42 @@ def level_var(sel):
 
 
 def db_text(level):
-    return tmpl(X(f"round({level})"), " dB")
+    """A level as the Wing shows it: +3 dB, -20 dB, or -∞ dB at the bottom of the fader."""
+    r = f"round({level})"
+    return tmpl(X(f"{r} <= -90 ? '-∞' : ({r} > 0 ? '+' : '')"), X(f"{r} <= -90 ? '' : {r}"), " dB")
 
 
 def db_pct(level, lo, hi):
     return f"max(0, min(100, ({level} - ({lo})) * 100 / {hi - lo}))"
 
 
-def fader_step(var, now, sel, lo, hi, sign):
-    """Moves a fader by this turn's steps in dB, inside lo to hi. Companion's copy and the Wing move by the same amount."""
+def travel_to(level, sign, lo, hi):
+    """`level` moved FADER_STEP percent of the fader's travel for each step in turn_n, rounded to a whole dB and kept
+    inside lo to hi. A level under lo, such as -oo, comes up to lo first."""
+    way = "+" if sign > 0 else "-"
+    moved = f"max({lo}, min({hi}, round(d)))"
+    return (f"l = {level};\nf = {fader_pos_x('l')} {way} {FADER_STEP / 100} * {TURN_N};\nd = {fader_db_x('f')};\n"
+            + (f"l < {lo} ? {lo} : {moved}" if sign > 0 else moved))
+
+
+def fader_step(var, now, sel, lo, hi, sign, travel=False):
+    """Moves a fader by this turn's steps, inside lo to hi, from the level the click works from: 1 dB a step, or with
+    `travel`, FADER_STEP percent of the fader's travel a step, the way the Wing's fader moves. Companion's copy takes
+    the new level, then the Wing's fader is set to it."""
+    level = turning(now, var)
     if sign > 0:
-        cond, target = f"{now} < {hi}", f"min({hi}, {now} + {TURN_N})"
+        cond = said(f"{level} < {hi}", f"its level is under {dbs(hi)} dB")
     else:
-        cond, target = f"{now} > {lo}", f"max({lo}, {now} - {TURN_N})"
-    return when(cond, [setexpr(var, target), wing_delta(sel, expr(f"{target} - {now}"))])
+        cond = said(f"{level} > {lo}", f"its level is over {lo} dB")
+    if travel:
+        target = said(travel_to(level, sign, lo, hi),
+                      f"its level moved {'up' if sign > 0 else 'down'} {FADER_STEP:g}% of the fader's travel for "
+                      f"each step in `turn_n`, inside {lo} to {dbs(hi)} dB (see Dial speed)")
+    elif sign > 0:
+        target = said(f"min({hi}, {level} + {TURN_N})", f"its level plus `turn_n`, up to {hi} dB")
+    else:
+        target = said(f"max({lo}, {level} - {TURN_N})", f"its level minus `turn_n`, down to {lo} dB")
+    return when(cond, [setexpr(var, target), wing_level_from(sel, var)])
 
 
 def zone_step(z, mx, sign):
@@ -745,26 +906,45 @@ def build_library():
                                                   press(APPLY_FADE)])],
         "Puts the linear lights back to the current look's level")
     def source_step(sign):
-        return [when(f"{CUR_SRC} == '{name}'", [fader_step(var, SRC_NOW[name], sel, SRC_MIN, SRC_MAX, sign)])
+        return [when(f"{CUR_SRC} == '{name}'", [fader_step(var, SRC_NOW[name], sel, SRC_MIN, SRC_MAX, sign,
+                                                           travel=True)])
                 for name, sel, var, _, _ in VOLUME_SOURCES]
 
     lib(VOL_UP, "Volume\nUp", source_step(1),
-        f"Raises whatever is playing by 1 dB for each step in `turn_n`, up to {SRC_MAX} dB, "
-        f"{SRC_MAX - SRC_NORMAL} dB over normal")
+        f"Raises whatever is playing by {FADER_STEP:g}% of the fader's travel for each step in `turn_n`, as the Wing's "
+        f"fader moves, up to {dbs(SRC_MAX)} dB, the top of the fader")
     lib(VOL_DOWN, "Volume\nDown", source_step(-1),
-        f"Lowers whatever is playing by 1 dB for each step in `turn_n`, down to {SRC_MIN} dB")
+        f"Lowers whatever is playing by {FADER_STEP:g}% of the fader's travel for each step in `turn_n`, as the Wing's "
+        f"fader moves, down to {SRC_MIN} dB")
     lib(VOL_RESET, "Volume\nReset", [when(f"{CUR_SRC} == '{name}'",
                                           [wing_level(sel, SRC_NORMAL), setvar(var, SRC_NORMAL)])
                                      for name, sel, var, _, _ in VOLUME_SOURCES],
         f"Puts whatever is playing back to its normal level, {SRC_NORMAL} dB")
     mic = f"/ch/{MIC_CH}"
-    lib(MIC_UP, "Mic\nUp", [when(POWERED, [fader_step("mic_level", MIC_NOW, mic, MIC_MIN, MIC_MAX, 1)])],
-        f"Raises the mic channel by 1 dB for each step in `turn_n`, stopping at {MIC_MAX} dB. Only while the audio is on")
-    lib(MIC_DOWN, "Mic\nDown", [when(POWERED, [fader_step("mic_level", MIC_NOW, mic, MIC_MIN, MIC_MAX, -1)])],
-        f"Lowers the mic channel by 1 dB for each step in `turn_n`, stopping at {MIC_MIN} dB. Only while the audio is on")
-    lib(MIC_MUTE, "Mic\nMute", [when(POWERED, [when(MIC_MUTED, [wing_mute(mic, False), setvar("mic_muted", 0)],
+    raised = said(travel_to(MIC_LEVEL, 1, MIC_MIN, MIC_MAX),
+                  f"its level moved up {FADER_STEP:g}% of the fader's travel for each step in `turn_n`, from at least "
+                  f"{MIC_MIN} dB up to +{MIC_MAX} dB (see Dial speed)")
+    lowered = said(travel_to(MIC_LEVEL, -1, MIC_MIN, MIC_MAX),
+                   f"its level moved down {FADER_STEP:g}% of the fader's travel for each step in `turn_n`, down to "
+                   f"{MIC_MIN} dB (see Dial speed)")
+    lib(MIC_UP, "Mic\nUp", [when(POWERED, [when(MIC_MUTED_TURN, [
+        setvar("mic_level", MIC_MIN), wing_level(mic, MIC_MIN), wing_mute(mic, False), setvar("mic_muted", 0)], [
+        when(said(f"{MIC_LEVEL} < {MIC_MAX}", f"the mic is under +{MIC_MAX} dB"),
+             [setexpr("mic_level", raised), wing_level_from(mic, "mic_level")]),
+        setvar("mic_muted", 0)])])],
+        f"While the mic is muted, sets the mic channel to {MIC_MIN} dB, then unmutes it, so it comes back quietly. "
+        f"Otherwise raises it by {FADER_STEP:g}% of the fader's travel for each step in `turn_n`, as the Wing's fader "
+        f"moves, from at least {MIC_MIN} dB, stopping at +{MIC_MAX} dB. Only while the audio is on")
+    lib(MIC_DOWN, "Mic\nDown", [when(POWERED, [when(said(f"!{MIC_MUTED_TURN}", "the mic isn't muted"), [
+        when(said(f"{MIC_LEVEL} <= {MIC_MIN}", f"the mic is at {MIC_MIN} dB or lower"),
+             [setexpr("mic_level", MIC_LEVEL), wing_mute(mic, True), setvar("mic_muted", 1)],
+             [setexpr("mic_level", lowered), wing_level_from(mic, "mic_level"), setvar("mic_muted", 0)])])])],
+        f"Lowers the mic channel by {FADER_STEP:g}% of the fader's travel for each step in `turn_n`, as the Wing's "
+        f"fader moves, stopping at {MIC_MIN} dB. One more click down mutes it, and a muted mic stays muted. Only while "
+        "the audio is on")
+    lib(MIC_MUTE, "Mic\nMute", [when(POWERED, [when(MIC_MUTED_SHOWN, [wing_mute(mic, False), setvar("mic_muted", 0)],
                                                      [wing_mute(mic, True), setvar("mic_muted", 1)])])],
-        "Mutes or unmutes the mic channel. Only while the audio is on")
+        "Mutes or unmutes the mic channel, leaving its level where it is. Only while the audio is on")
     lib(CLOSE_UP, "Close\nUp", [setvar("light_mode", "deck"), wait(20), press(LIGHTS_OFF), press(ALL_TVS_OFF),
                                 press(POWER_OFF)],
         "Leaves iPad Mode, then turns off the lights, every TV and the audio system. The night schedule runs it")
@@ -815,9 +995,11 @@ def build_library():
         "Puts the picked zone back to its normal level. Only while the audio is on")
     _, bt_sel, bt_var, _, _ = next(v for v in VOLUME_SOURCES if v[0] == "Bluetooth")
     for loc, label, sign in ((BT_UP, "Bluetooth\nUp", 1), (BT_DOWN, "Bluetooth\nDown", -1)):
-        lib(loc, label, [when(POWERED, [fader_step(bt_var, SRC_NOW["Bluetooth"], bt_sel, SRC_MIN, SRC_MAX, sign)])],
-            f"{'Raises' if sign > 0 else 'Lowers'} Bluetooth by 1 dB for each step in `turn_n`, inside {SRC_MIN} to "
-            f"{SRC_MAX} dB, whether or not it is playing. Only while the audio is on")
+        lib(loc, label, [when(POWERED, [fader_step(bt_var, SRC_NOW["Bluetooth"], bt_sel, SRC_MIN, SRC_MAX, sign,
+                                                   travel=True)])],
+            f"{'Raises' if sign > 0 else 'Lowers'} Bluetooth by {FADER_STEP:g}% of the fader's travel for each step in "
+            f"`turn_n`, as the Wing's fader moves, inside {SRC_MIN} to {dbs(SRC_MAX)} dB, whether or not it is playing. "
+            "Only while the audio is on")
     lib(BT_RESET, "Bluetooth\nReset", [when(POWERED, [wing_level(bt_sel, SRC_NORMAL), setvar(bt_var, SRC_NORMAL)])],
         f"Puts Bluetooth back to its normal level, {SRC_NORMAL} dB. Only while the audio is on")
 
@@ -828,8 +1010,9 @@ def build_library():
         lib(TV_SEND[n], f"TV{n}\nSend", tv_send(n),
             f"Sends the {name} TV what `tv{n}_src` says. Off turns it off. Anything else turns it on: Stream, "
             f"Announcements and Custom set ATEM output {TV_AUX[n]} to that source and the TV to HDMI {TV_ATEM_HDMI}, "
-            f"and Local HDMI sets the TV to HDMI {TV_LOCAL_HDMI}. {TV_WAKE_MS / 1000:g} s later it sends the picture "
-            "again, for a TV that was waking up. USB only turns it on: Simple IP control has no USB input")
+            f"and Local HDMI sets the TV to HDMI {TV_LOCAL_HDMI}. {tv_wake_ms(n) / 1000:g} s later it sends the "
+            "picture again, for a TV that was waking up. USB only turns it on: there's no USB input to pick"
+            + (". A Samsung on test: power through its module, and inputs as remote keys" if n in SAMSUNG_TVS else ""))
         lib(TV_ON_LOC[n], f"TV{n}\nOn", [press(TV_SHOW[n][default])],
             f"Turns the {name} TV on showing its default, {content_noun[default]}. To change the default, point "
             "this at another Show block on the same row")
@@ -860,13 +1043,12 @@ def light_display():
     }
 
 
-def from_normal(level):
-    """A source fader's level as the panel says it: Normal, or how far from normal, such as +3 dB."""
-    d = f"({level} - ({SRC_NORMAL}))"
-    return f"round({d}) == 0 ? 'Normal' : " + tmpl(X(f"{d} > 0 ? '+' : ''"), X(f"round({d})"), " dB")
+def travel_pct(name):
+    """How far along a source panel's bar to fill: where the Wing's fader sits. `name` holds the level."""
+    return f"max(0, min(100, 100 * {fader_pos_x(name)}))"
 
 
-NORMAL_TICK = (SRC_NORMAL - SRC_MIN) * 100 / (SRC_MAX - SRC_MIN)  # where Normal sits along a source panel's bar
+NORMAL_TICK = 100 * fader_pos(SRC_NORMAL)  # where normal sits along a source panel's bar, as on the Wing's fader
 
 
 LINEAR_DISPLAY = {
@@ -878,9 +1060,9 @@ LINEAR_DISPLAY = {
 }
 VOLUME_DISPLAY = {
     "title": f"c = {CUR_SRC};\n" + source_pick({n: f"'{t}'" for n, _, _, t, _ in VOLUME_SOURCES}, "'VOLUME'"),
-    "title_expr": True, "art": "audio", "doc": "What is playing and its volume from normal",
-    "value": with_source(f"c == 'Off' ? 'Off' : ({from_normal('v')})"),
-    "pct": with_source(f"c == 'Off' ? 0 : max(0, min(100, (v - ({SRC_MIN})) * 100 / {SRC_MAX - SRC_MIN}))"),
+    "title_expr": True, "art": "audio", "doc": "What is playing and its fader level, as the Wing shows it",
+    "value": with_source(f"c == 'Off' ? 'Off' : {db_text('v')}"),
+    "pct": with_source(f"c == 'Off' ? 0 : {travel_pct('v')}"),
     "tick": NORMAL_TICK,
     "color": f"c = {CUR_SRC};\n" + source_pick({n: f"'{accent(cat)}'" for n, _, _, _, cat in VOLUME_SOURCES},
                                                 f"'{DIM}'"),
@@ -890,10 +1072,10 @@ VOLUME_DISPLAY = {
 }
 MIC_DISPLAY = {
     "title": "MICS", "art": "mic",
-    "value": f"{UNPOWERED} ? 'Off' : ({MIC_MUTED} ? 'Muted' : " + db_text(MIC_NOW) + ")",
-    "pct": f"{UNPOWERED} ? 0 : " + db_pct(MIC_NOW, MIC_MIN, MIC_MAX),
-    "color": f"{UNPOWERED} ? '{DIM}' : ({MIC_MUTED} ? '{accent('off')}' : '{accent('mic')}')",
-    "value_color": f"{UNPOWERED} ? '{DIM}' : ({MIC_MUTED} ? '{accent('off')}' : '#ffffff')",
+    "value": f"{UNPOWERED} ? 'Off' : ({MIC_MUTED_SHOWN} ? 'Muted' : " + db_text(MIC_SHOWN) + ")",
+    "pct": f"v = {MIC_SHOWN};\n{UNPOWERED} || {MIC_MUTED_SHOWN} ? 0 : {travel_pct('v')}",
+    "color": f"{UNPOWERED} ? '{DIM}' : ({MIC_MUTED_SHOWN} ? '{accent('off')}' : '{accent('mic')}')",
+    "value_color": f"{UNPOWERED} ? '{DIM}' : ({MIC_MUTED_SHOWN} ? '{accent('off')}' : '#ffffff')",
     "badge": f"!({WING_ONLINE})",
     "dim": UNPOWERED,
 }
@@ -908,18 +1090,18 @@ AREA_DISPLAY = {
     "color": f"{IPAD} ? '{accent('ipad')}' : ({LIGHTS_ON} ? '{accent('light')}' : '{DIM}')",
     "value_color": f"{IPAD} ? '{accent('ipad')}' : ({LIGHTS_ON} ? '#ffffff' : '{DIM}')",
 }
-BT_NOW = SRC_NOW["Bluetooth"]
+BT_NOW = SRC_SHOWN["Bluetooth"]
 BT_DISPLAY = {
     "title": "BLUETOOTH", "art": "bluetooth",
-    "value": f"{UNPOWERED} ? 'Off' : ({from_normal(BT_NOW)})",
-    "pct": f"{UNPOWERED} ? 0 : " + db_pct(BT_NOW, SRC_MIN, SRC_MAX),
+    "value": f"v = {BT_NOW};\n{UNPOWERED} ? 'Off' : {db_text('v')}",
+    "pct": f"v = {BT_NOW};\n{UNPOWERED} ? 0 : {travel_pct('v')}",
     "tick": NORMAL_TICK,
     "color": f"{UNPOWERED} ? '{DIM}' : '{accent('audio')}'",
     "value_color": f"{UNPOWERED} ? '{DIM}' : '#ffffff'",
     "badge": f"!({WING_ONLINE})",
     "dim": UNPOWERED,
 }
-ZONE_LEVEL = pick_chain(ZONE_PICK, ZONE_NOW, "0")
+ZONE_LEVEL = pick_chain(ZONE_PICK, ZONE_SHOWN, "0")
 ZONE_DISPLAY = {
     "title": tmpl(X(pick_chain(ZONE_PICK, {z: f"'{name.upper()}'" for z, name, *_ in ZONES}, "'ZONE'")), " · ",
                   X(PICKED_SRC)),
@@ -1014,7 +1196,7 @@ def zone_key(page, r, c, zone):
     src = f"$(custom:z{z}_src)"
     add(page, r, c, label=name, icon=zone[4], cat="off", down=[setvar("zone_pick", z)],
         fb=[(f"{src} != 'Off'", "on"), (f"{src} == 'Off'", "active")], pick=f"{ZONE_PICK} == {z}",
-        bar={"pct": f"{UNPOWERED} ? 0 : " + db_pct(ZONE_NOW[z], VOL_MIN, VOL_MAX),
+        bar={"pct": f"{UNPOWERED} ? 0 : " + db_pct(ZONE_SHOWN[z], VOL_MIN, VOL_MAX),
              "color": f"{src} == 'Off' ? '{DIM}' : '{accent('power')}'"},
         does=f"Tap to pick {name} for the Zone dial and the switch beside it. Green while it plays and red while "
              "it's off, with its level along the bottom")
@@ -1042,22 +1224,25 @@ def deck_dials(page, third="volume"):
          f"Turn to set just the linear lights, {LIGHT_STEP}% a click, more when turned quickly. "
          "Push to put them back to the look", "lin")
     if third == "volume":
-        strip(page, 2, VOLUME_DISPLAY, "Touch strip: what is playing, and its volume from normal, or Off")
+        strip(page, 2, VOLUME_DISPLAY, "Touch strip: what is playing and its fader level, as the Wing shows it, with "
+              "the bar where the Wing's fader sits and a tick at normal. Off while nothing plays")
         dial(page, 2, "Volume", [press(VOL_RESET)], [press(VOL_DOWN)], [press(VOL_UP)],
-             "Turn for the volume of whatever is playing, 1 dB a click, more when turned quickly: the auditorium "
-             "feed, music, Bluetooth or the lobby stage. Push to put it back to normal. Does nothing while the audio "
-             "is off or nothing plays", "vol")
+             "Turn for the volume of whatever is playing: the auditorium feed, music, Bluetooth or the lobby stage. "
+             "It moves along the Wing fader's own scale, 1 dB a click near the top, 2 dB from -10 to -30 dB and 4 dB "
+             f"below, more when turned quickly, from {SRC_MIN} to {dbs(SRC_MAX)} dB. Push to put it back to normal, "
+             f"{SRC_NORMAL} dB. Does nothing while the audio is off or nothing plays", "vol")
     elif third == "area":
         strip(page, 2, AREA_DISPLAY, "Touch strip: the picked area and its level")
         dial(page, 2, "Area", [press(PICKED_AREA_RESET)], [press(PICKED_AREA_DOWN)], [press(PICKED_AREA_UP)],
              f"Turn to set the picked area, {LIGHT_STEP}% a click, more when turned quickly. With the lights off, "
              "turning up brings that area on by itself. Push to put it back to the look", "area")
     elif third == "bluetooth":
-        strip(page, 2, BT_DISPLAY, "Touch strip: the Bluetooth level from normal, or Off")
+        strip(page, 2, BT_DISPLAY, "Touch strip: the Bluetooth fader level, as the Wing shows it, with the bar where "
+              "the Wing's fader sits and a tick at normal. Off while the audio is off")
         dial(page, 2, "Bluetooth", [press(BT_RESET)], [press(BT_DOWN)], [press(BT_UP)],
-             "Turn for the Bluetooth level, 1 dB a click, more when turned quickly, playing or not. It keeps that "
-             "level until it is turned again. Push to put it back to normal. Does nothing while the audio is off",
-             "bt")
+             "Turn for the Bluetooth level, playing or not, along the Wing fader's own scale like Volume. It keeps "
+             f"that level until it is turned again. Push to put it back to normal, {SRC_NORMAL} dB. Does nothing while "
+             "the audio is off", "bt")
     else:
         strip(page, 2, ZONE_DISPLAY, "Touch strip: the picked zone, its source and level")
         dial(page, 2, "Zone", [press(PICKED_ZONE_RESET)], [press(PICKED_ZONE_DOWN)], [press(PICKED_ZONE_UP)],
@@ -1065,8 +1250,10 @@ def deck_dials(page, third="volume"):
              "its normal level. Does nothing while the audio is off", "zone")
     strip(page, 3, MIC_DISPLAY, "Touch strip: the mic level, Muted, or Off while the audio is off")
     dial(page, 3, "Mics", [press(MIC_MUTE)], [press(MIC_DOWN)], [press(MIC_UP)],
-         f"Turn for mic volume, 1 dB a click, more when turned quickly, up to {MIC_MAX} dB. "
-         "Push to mute or unmute the mics. Does nothing while the audio is off", "mic")
+         f"Turn for mic volume, along the Wing fader's own scale like Volume, from {MIC_MIN} to +{MIC_MAX} dB: 1 dB a "
+         "click near the top and more lower down, more when turned quickly. Turning down past "
+         f"{MIC_MIN} dB mutes the mic, and turning up from muted brings it back at {MIC_MIN} dB. Push to mute, or "
+         "to unmute at the level it had. Does nothing while the audio is off", "mic")
 
 
 def ipad_key(page, r, c):
@@ -1212,6 +1399,14 @@ def build_triggers():
             {"time": "22:00:00", "days": [0, 1, 2, 3, 4, 5, 6]},
             [press(CLOSE_UP)],
             does="Off at first. Nightly 22:00: Close Up, which also leaves iPad Mode so doors can't stay locked")
+    still = f"!{recent(*AUDIO_DIALS)}"
+    trigger("wing_refresh", "Wing refresh", 4, True, "interval", {"seconds": WING_POLL_S},
+            [when(still, [*[wing_query(path) for path in WING_QUERIES], wait(WING_POLL_WAIT_MS),
+                          when(still, [setexpr("wing_poll", "unixNow()")])])],
+            does=f"Every {WING_POLL_S} seconds, unless an audio dial clicked in the last `turn_settle_ms`: asks the Wing "
+                 "for each level and mute the panels show, waits for the answers, then sets `wing_poll`. A panel whose "
+                 "dial clicked before that goes back to showing the Wing, so changes made on the Wing show up even if "
+                 "the Wing's own report of them was missed")
 
 
 LEVEL_NAMES = {"linear": "linear lights", **{slug(name): name for _, name, *_ in LIGHT_AREAS}}
@@ -1245,11 +1440,20 @@ VARIABLES = {  # name: (description, default)
                      str(TURN_FAST_MS)),
     "turn_medium_ms": (f"Dial clicks closer together than this, in ms, move {TURN_MEDIUM} steps each. 0 turns it off",
                        str(TURN_MEDIUM_MS)),
+    "turn_settle_ms": ("The Wing refresh waits until no audio dial has clicked for this many ms. Until it runs, a "
+                       "turning dial and its panel use Companion's copy of the level, since the Wing's report lags a "
+                       "turn", str(TURN_SETTLE_MS)),
+    "wing_poll": ("When the Wing refresh last asked the Wing for its levels, in ms. A panel shows Companion's copy "
+                  "while its dial has clicked since then", "0"),
     "turn_n": ("Steps for the dial click being handled, worked out from how fast it turned", "1"),
+    "turn_held": ("1 when the dial click being handled carries on a turn of the same dial, one the Wing refresh "
+                  "hasn't run since", "0"),
     "turn_ms": ("When a dial last clicked, in ms", "0"),
     "turn_key": ("Which dial last clicked, and which way", ""),
 }
-PERSIST_OFF = {"lt_saved", "turn_n", "turn_ms", "turn_key"}
+PERSIST_OFF = {"lt_saved", "turn_n", "turn_held", "turn_ms", "turn_key", "wing_poll"}
+WING_QUERIES = ([f"/ch/{MIC_CH}/fdr", f"/ch/{MIC_CH}/mute"] + [f"{sel}/fdr" for _, sel, *_ in VOLUME_SOURCES]
+                + [f"/mtx/{mx}/fdr" for _, _, mx, *_ in ZONES])  # what the Wing refresh asks for: what the panels show
 WING_VARIABLES = ({f"mtx{mx}_level" for _, _, mx, *_ in ZONES} | {f"ch{MIC_CH}_level", f"ch{MIC_CH}_mute"}
                   | {f"{sel.strip('/').replace('/', '')}_level" for _, sel, *_ in VOLUME_SOURCES})
 
@@ -2001,7 +2205,7 @@ def export():
         "surfaceInstanceCollections": [],
         "instances": {
             "wing": {"label": "wing", "moduleId": "behringer-wing", "enabled": True, "isFirstInit": False,
-                     "lastUpgradeIndex": 1, "sortOrder": 0, "updatePolicy": "stable",
+                     "lastUpgradeIndex": WING_UPGRADE, "sortOrder": 0, "updatePolicy": "stable",
                      "config": {"host": WING_IP, "model": "rack", "fadeUpdateRate": 50,
                                 "statusPollUpdateRate": 3000, "variableUpdateRate": 100,
                                 "prefetchVariablesOnStartup": True, "show-advanced-options": False,
@@ -2034,11 +2238,16 @@ def export():
                      "config": {"bonjourHost": None, "host": ATEM_IP, "modelID": ATEM_MODEL, "presets": 0,
                                 "fadeFps": 10, "enableCameraControl": False, "pollTimecode": False}},
             # generic-tcp-udp 2.3.0 again, holding a TCP connection to each TV's Simple IP control port. It
-            # reconnects by itself if the TV drops it. The TV's last reply shows as $(tvN:tcp_response)
-            **{conn: {"label": conn, "moduleId": "generic-tcp-udp", "enabled": True, "isFirstInit": False,
-                      "lastUpgradeIndex": -1, "sortOrder": 5 + len(SPEAKER_PLUGS) + i, "updatePolicy": "stable",
-                      "config": {"host": TV_IP.format(n), "port": TV_PORT, "prot": "tcp", "broadcast": False,
-                                 "saveresponse": True, "convertresponse": "string"}}
+            # reconnects by itself if the TV drops it. The TV's last reply shows as $(tvN:tcp_response).
+            # A Samsung uses samsung-smarttv 1.0.0 instead: its secure socket, with Limit TLS to 1.2 on as its help
+            # advises, and no upgrade scripts. The pairing token isn't in the file: the TV gives it when allowed
+            **{conn: {"label": conn, "moduleId": "samsung-smarttv" if n in SAMSUNG_TVS else "generic-tcp-udp",
+                      "enabled": True, "isFirstInit": False, "lastUpgradeIndex": -1,
+                      "sortOrder": 5 + len(SPEAKER_PLUGS) + i, "updatePolicy": "stable",
+                      "config": ({"host": SAMSUNG_TVS[n][0], "macAddress": SAMSUNG_TVS[n][1], "port": SAMSUNG_PORT,
+                                  "limitTls": True} if n in SAMSUNG_TVS else
+                                 {"host": TV_IP.format(n), "port": TV_PORT, "prot": "tcp", "broadcast": False,
+                                  "saveresponse": True, "convertresponse": "string"})}
                for i, (conn, n) in enumerate(TV_CONNS.items())},
         },
     }
@@ -2361,13 +2570,15 @@ ALLOWED = {  # (connection, definition): option names, taken from the module and
     ("internal", "check_expression"): {"expression"},
     ("wing", "set-send-mute"): {"src", "dest", "mainDest", "mute"},
     ("wing", "set-mute"): {"sel", "mute"},
-    ("wing", "set-fader"): {"sel", "level", *FADE},
-    ("wing", "fader-delta"): {"sel", "delta", *FADE},
+    ("wing", "set-fader"): {"sel", "level", "level_use_variables", "level_variables", *FADE},
+    ("wing", "send-command"): {"cmd"},
     ("dmx", "set_complex"): {"params", "duration"},
     ("wiim", "get"): {"url", "header", "jsonResultDataVariable", "result_stringify", "statusCodeVariable"},
     ("power", "send"): {"id_send", "id_end"},
     **{(conn, d): set() for conn, _ in SPEAKER_PLUGS for d in ("on", "off")},  # single-plug mode, no options
-    **{(conn, "send"): {"id_send", "id_end"} for conn in TV_CONNS},
+    **{(conn, "send"): {"id_send", "id_end"} for conn, n in TV_CONNS.items() if n not in SAMSUNG_TVS},
+    **{(conn, "power"): {"power"} for conn, n in TV_CONNS.items() if n in SAMSUNG_TVS},
+    **{(conn, "sendButton"): {"remoteButton"} for conn, n in TV_CONNS.items() if n in SAMSUNG_TVS},
     ("atem", "aux"): {"aux", "input"},
 }
 ELEMENT_PROPS = {  # from Companion 5.1.3 StyleLayersModel
@@ -2399,6 +2610,12 @@ def all_entity_lists():
     for tid, t in TRIGGERS.items():
         yield tid, t["control"]["actions"]
         yield tid, t["control"]["condition"]
+
+
+# Connections whose modules have Companion work out expressions in their options: Companion's own, and bmd-atem 4.5,
+# built on the 2.x module API. The rest may be on 1.x, the Wing's stable releases among them, where an expression
+# arrives as its text
+EXPRESSIONS_OK = {"internal", "atem"}
 
 
 def check_refs(where, text, errors):
@@ -2443,6 +2660,9 @@ def validate(controls):
                 continue
             if set(e["options"]) - ALLOWED[spec]:
                 errors.append(f"{where}: bad options on {spec}")
+            if e["connectionId"] not in EXPRESSIONS_OK and any(
+                    is_wrapped(v) and v["isExpression"] for v in e["options"].values()):
+                errors.append(f"{where}: {spec} gets an expression, which its module can't take. Use a variable")
             if e["id"] in ids and e["definitionId"] != "check_expression":
                 errors.append(f"{where}: repeated id {e['id']}")
             ids.add(e["id"])
@@ -2507,6 +2727,31 @@ class Sim:
         self.dmx = [0] * 512
         self.kept = {}
         self.clock, self.this = 1_000_000, {}
+        self.lag, self.unreported = False, {}  # lag: the Wing takes values, but the module doesn't report them yet
+        self.wing_log = []                     # every level and mute sent to the Wing, in order
+
+    def desk_set(self, name, value):
+        (self.unreported if self.lag else self.wing)[name] = value
+
+    def report(self):
+        """The module catches up, as it does once the Wing has been quiet for 100 ms."""
+        self.wing.update(self.unreported)
+        self.unreported.clear()
+
+    def reads(self, loc, field_name):
+        """The variables a panel's expression reads, which are the ones Companion redraws it for."""
+        seen = set()
+        run_expression(KEYS[loc].show[field_name], lambda conn, name: seen.add((conn, name)) or self.get(conn, name))
+        return seen
+
+    def poll(self, gap=0):
+        """The Wing refresh fires, `gap` ms from now."""
+        self.clock += gap
+        self.run(TRIGGERS["wing_refresh"]["control"]["actions"])
+
+    def desk(self, name):
+        """What the Wing holds, reported yet or not."""
+        return self.unreported.get(name, self.wing.get(name))
 
     def get(self, conn, name):
         if conn == "image":
@@ -2564,6 +2809,12 @@ class Sim:
                 self.log.append(("wiim", self.text(o["url"]).split("=", 1)[1]))
             elif a["connectionId"] == "wing" and not self.connected:
                 pass
+            elif d == "send-command":
+                kind, n, what = o["cmd"].strip("/").split("/")
+                name = f"{kind}{n}_{'level' if what == 'fdr' else what}"
+                self.wing_log.append(("query", o["cmd"], None))
+                if name in self.unreported:
+                    self.wing[name] = self.unreported.pop(name)
             elif d == "set-send-mute":
                 self.sends[(o["src"], o["dest"])] = o["mute"] == "0"
             elif d == "set-mute":
@@ -2571,12 +2822,12 @@ class Sim:
                 muted = not self.mutes.get(sel, False) if o["mute"] == "-1" else o["mute"] == "1"
                 self.mutes[sel] = muted
                 kind, n = sel.strip("/").split("/")
-                self.wing[f"{kind}{n}_mute"] = int(muted)
+                self.wing_log.append(("mute", f"{kind}{n}_mute", int(muted)))
+                self.desk_set(f"{kind}{n}_mute", int(muted))
             elif d == "set-fader":
-                self.wing[self.level_name(o["sel"])] = float(o["level"])
-            elif d == "fader-delta":
-                name = self.level_name(o["sel"])
-                self.wing[name] = max(-90.0, to_num(self.wing.get(name, -90.0))) + float(o["delta"])
+                level = self.text(o["level_variables"]) if o.get("level_use_variables") else o["level"]
+                self.wing_log.append(("level", self.level_name(o["sel"]), float(level)))
+                self.desk_set(self.level_name(o["sel"]), float(level))
             elif d == "set_complex":
                 params = self.text(o["params"])
                 self.log.append(("dmx", params))
@@ -2634,7 +2885,7 @@ def tests():
     N = float(SRC_NORMAL)  # a source fader at normal
     UP_LOG = [("power", "on")] + [(conn, "on") for conn, _ in SPEAKER_PLUGS]  # what reaches the power gear, in order
     DOWN_LOG = [(conn, "off") for conn, _ in SPEAKER_PLUGS] + [("power", "off")]
-    to_top = SRC_MAX - SRC_NORMAL + 3  # slow clicks enough to reach the top from normal
+    to_top = math.ceil((1 - fader_pos(SRC_NORMAL)) * 100 / FADER_STEP) + 3  # slow clicks enough to reach the top
 
     def lit(st, loc):
         return any(truthy(st.eval(x)) for x, state in KEYS[loc].fb if state == "active")
@@ -2734,12 +2985,106 @@ def tests():
     ok("the Zone dial speeds up too", s.wing["mtx1_level"] == -6.0 - 1 - TURN_FAST and s.vars["z1_level"] == -11)
     s.turn("1/3/3", "left", gap=20)
     s.turn("1/3/3", "left", gap=20)
-    ok("the Mics dial speeds up too", s.wing[f"ch{MIC_CH}_level"] == MIC_START - 1 - TURN_FAST)
+    ok("the Mics dial speeds up too, along the fader's travel", s.wing[f"ch{MIC_CH}_level"] == -20)
     s = Sim(connected=False)
     s.press(SCENE_LOC["Music Inside"])
     s.turn("1/3/2", "left", gap=20)
     s.turn("1/3/2", "left", gap=20)
-    ok("speed works with no Wing", s.vars["music_level"] == N - 1 - TURN_FAST)
+    ok("speed works with no Wing, along the fader's travel", s.vars["music_level"] == -30)
+    # A Wing whose reports lag behind the clicks, the way the module waits for it to go quiet. A quick turn still moves
+    # one way, each click from where the last left the fader, and the panel follows the clicks
+    s = Sim()
+    s.press(SCENE_LOC["Music Inside"])
+    s.lag = True
+    first = len(s.wing_log)
+    for gap in (1000, 20, 20, 200, 20, 90, 20):
+        s.turn("1/3/2", "right", gap=gap)
+    sent = [value for _, name, value in s.wing_log[first:] if name == "bus15_level"]
+    ok("with the Wing's reports lagging, a quick Volume turn only goes up, each click from the last",
+       sent == [-18, -10, -6, -5, -1, 1, 5])
+    ok("the Volume panel follows the clicks, not the lagging report", s.show("1/2/2", "value") == "+5 dB")
+    s.report()
+    s.lag = False
+    s.wing["bus15_level"] = -30.0  # moved on the Wing after the dial went still
+    s.poll(TURN_SETTLE_MS)
+    ok("once the dial is still, its panel follows the Wing again", s.show("1/2/2", "value") == "-30 dB")
+    s.turn("1/3/2", "right", gap=TURN_SETTLE_MS)
+    ok("and its next turn starts from the Wing's level", s.wing["bus15_level"] == -28)
+    # The Wing refresh. Companion redraws a panel only when a variable its expression read last time changes, so the
+    # checks look at what each panel reads, as well as what it shows
+    volume = s
+    s = Sim()
+    s.press(SCENE_LOC["Music Inside"])
+    s.wing["bus15_level"] = -12.0
+    ok("before any turn, the Volume panel follows a change made on the Wing", s.show("1/2/2", "value") == "-12 dB"
+       and ("wing", "bus15_level") in s.reads("1/2/2", "value"))
+    s.turn("1/3/2", "right")
+    s.wing["bus15_level"] = -30.0
+    ok("while its dial turns, the panel shows Companion's copy, and is redrawn when the refresh comes",
+       s.show("1/2/2", "value") == "-10 dB" and ("custom", "wing_poll") in s.reads("1/2/2", "value"))
+    first = len(s.wing_log)
+    s.poll(100)
+    ok("the refresh waits while an audio dial has just clicked", len(s.wing_log) == first
+       and s.show("1/2/2", "value") == "-10 dB")
+    s.poll(TURN_SETTLE_MS)
+    asked = [path for kind, path, _ in s.wing_log[first:] if kind == "query"]
+    ok("once the dial is still, the refresh asks the Wing for every level and mute the panels show",
+       asked == WING_QUERIES and len(asked) == 2 + len(VOLUME_SOURCES) + len(ZONES))
+    ok("then the panel goes back to the Wing", s.show("1/2/2", "value") == "-30 dB"
+       and ("wing", "bus15_level") in s.reads("1/2/2", "value"))
+    s.wing["bus15_level"] = -6.0
+    s.wing[f"ch{MIC_CH}_mute"] = 1
+    ok("and follows changes made on the Wing, the mic's mute too", s.show("1/2/2", "value") == "-6 dB"
+       and s.show("1/2/3", "value") == "Muted")
+    s = Sim()
+    s.press(SCENE_LOC["Music Inside"])
+    s.lag = True  # a Wing whose reports never arrive on their own
+    s.turn("1/3/2", "right")
+    s.poll(TURN_SETTLE_MS)
+    ok("with a Wing that never reports on its own, the refresh's questions bring its level in",
+       s.wing["bus15_level"] == -18.0 and s.show("1/2/2", "value") == "-18 dB")
+    zone_level = f"mtx{ZONES[0][2]}_level"  # the zone Audio Zones' dial starts on
+    s.unreported[zone_level] = -15.0  # changed on the Wing, and not reported
+    ok("a zone changed on the Wing and not reported yet", s.show("6/2/2", "value") != "-15 dB")
+    s.poll(WING_POLL_S * 1000)
+    ok("shows up at the next refresh", s.show("6/2/2", "value") == "-15 dB" and s.wing[zone_level] == -15.0)
+    s.turn("1/3/2", "right", gap=WING_POLL_S * 1000)
+    s.turn("1/3/2", "right", gap=1500)  # slower than turn_settle_ms, but no refresh between
+    s.poll(TURN_SETTLE_MS)
+    s.turn("1/3/2", "right", gap=WING_POLL_S * 1000)
+    ok("with that Wing, slow clicks go one way, each from the last, with or without a refresh between",
+       [value for kind, name, value in s.wing_log if name == "bus15_level"][-3:] == [-16.0, -14.0, -12.0])
+    s = volume
+    # The Volume panel reads like the Wing's fader: its level, and the bar where the fader sits
+    for level, text, pct in ((10.0, "+10 dB", 100), (0.0, "0 dB", 75), (-10.0, "-10 dB", 50), (N, "-20 dB", 37.5),
+                             (-30.0, "-30 dB", 25), (-60.0, "-60 dB", 6.25), ("-oo", "-∞ dB", 0)):
+        s.wing["bus15_level"] = level
+        s.poll(TURN_SETTLE_MS)
+        ok(f"the Volume panel reads {text} with the bar {pct:g}% along, as the Wing's fader sits",
+           s.show("1/2/2", "value") == text and abs(s.show("1/2/2", "pct") - pct) < 0.01)
+    ok("the Normal tick sits at -20 dB on the fader's scale", NORMAL_TICK == 37.5)
+    for start, way, steps in ((5.0, "right", [6, 7, 8, 9, 10]), (-8.0, "left", [-9, -10, -12, -14]),
+                              (-28.0, "left", [-30, -34, -38]), (-54.0, "left", [-58, -60]),
+                              ("-oo", "right", [-60, -56])):
+        s.wing["bus15_level"] = start
+        s.poll(TURN_SETTLE_MS)
+        first = len(s.wing_log)
+        for _ in steps:
+            s.turn("1/3/2", way, gap=TURN_SETTLE_MS)
+        moved = [value for _, name, value in s.wing_log[first:] if name == "bus15_level"]
+        ok(f"from {start} dB, slow clicks {way} follow the fader's scale: {moved}", moved == steps)
+    s = Sim()
+    s.press("1/1/0")
+    s.wing[f"ch{MIC_CH}_level"] = float(MIC_MIN + 3)
+    s.lag = True
+    for gap in (1000, 20, 20):
+        s.turn("1/3/3", "left", gap=gap)
+    ok(f"with the Wing's reports lagging, a quick turn down stops at {MIC_MIN} dB, then mutes",
+       s.desk(f"ch{MIC_CH}_mute") == 1 and s.desk(f"ch{MIC_CH}_level") == MIC_MIN
+       and s.show("1/2/3", "value") == "Muted")
+    s.turn("1/3/3", "right", gap=20)
+    ok(f"turning straight back up unmutes at {MIC_MIN} dB", s.desk(f"ch{MIC_CH}_mute") == 0
+       and s.desk(f"ch{MIC_CH}_level") == MIC_MIN and s.show("1/2/3", "value") == f"{MIC_MIN} dB")
     s = Sim()
     s.vars.update(turn_fast_ms="0", turn_medium_ms="0")
     s.press("1/0/2")
@@ -2943,18 +3288,18 @@ def tests():
     s.press("1/1/0")
     s.turn("5/3/2", "right")
     s.turn("5/3/2", "right")
-    ok("the Bluetooth dial sets its level even when it isn't playing", s.wing["bus16_level"] == N + 2
-       and s.vars["bt_level"] == N + 2 and s.show("5/2/2", "value") == "+2 dB")
+    ok("the Bluetooth dial sets its level even when it isn't playing", s.wing["bus16_level"] == N + 4
+       and s.vars["bt_level"] == N + 4 and s.show("5/2/2", "value") == "-16 dB")
     s.press("5/0/2")
-    ok("Bluetooth plays at the level its dial set", s.hears(1) == "Bluetooth" and s.wing["bus16_level"] == N + 2)
+    ok("Bluetooth plays at the level its dial set", s.hears(1) == "Bluetooth" and s.wing["bus16_level"] == N + 4)
     s.press(SCENE_LOC["Auditorium"])
-    ok("room buttons keep the Bluetooth level", s.wing["bus16_level"] == N + 2 and s.wing["bus15_level"] == N)
+    ok("room buttons keep the Bluetooth level", s.wing["bus16_level"] == N + 4 and s.wing["bus15_level"] == N)
     s.run(KEYS["5/3/2"].down)
     ok("pushing the Bluetooth dial puts it back to normal", s.wing["bus16_level"] == N
-       and s.show("5/2/2", "value") == "Normal")
+       and s.show("5/2/2", "value") == "-20 dB" and s.show("5/2/2", "pct") == 37.5)
     for _ in range(to_top):
         s.turn("5/3/2", "right")
-    ok(f"the Bluetooth dial stops at {SRC_MAX} dB, {SRC_MAX - SRC_NORMAL} dB over normal", s.wing["bus16_level"] == float(SRC_MAX))
+    ok(f"the Bluetooth dial stops at +{SRC_MAX} dB, the top of the fader", s.wing["bus16_level"] == float(SRC_MAX))
     # Volume follows whatever is playing, with the Wing connected
     s = Sim()
     s.turn("1/3/2", "right")
@@ -2962,25 +3307,27 @@ def tests():
        and s.show("1/2/2", "title") == "VOLUME")
     s.press(SCENE_LOC["Music Inside"])
     s.turn("1/3/2", "right")
-    ok("Volume moves the music while music plays", s.wing["bus15_level"] == N + 1 and s.wing["bus14_level"] == N
-       and s.wing["mtx1_level"] == -6.0 and s.show("1/2/2", "value") == "+1 dB" and s.show("1/2/2", "title") == "MUSIC")
+    ok("Volume moves the music while music plays", s.wing["bus15_level"] == N + 2 and s.wing["bus14_level"] == N
+       and s.wing["mtx1_level"] == -6.0 and s.show("1/2/2", "value") == "-18 dB" and s.show("1/2/2", "title") == "MUSIC")
     s.press(SCENE_LOC["Auditorium"])
     ok("a room button puts the music back to normal", s.wing["bus15_level"] == N
-       and s.show("1/2/2", "title") == "AUDITORIUM" and s.show("1/2/2", "value") == "Normal")
+       and s.show("1/2/2", "title") == "AUDITORIUM" and s.show("1/2/2", "value") == "-20 dB")
     s.turn("1/3/2", "left")
     s.turn("1/3/2", "left")
-    ok("Volume moves the auditorium feed while it plays", s.wing["bus14_level"] == N - 2
-       and s.wing["bus15_level"] == N and s.show("1/2/2", "value") == "-2 dB")
+    ok("Volume moves the auditorium feed while it plays", s.wing["bus14_level"] == N - 4
+       and s.wing["bus15_level"] == N and s.show("1/2/2", "value") == "-24 dB")
     s.run(KEYS["1/3/2"].down)
-    ok("pushing Volume puts it back to normal", s.wing["bus14_level"] == N and s.show("1/2/2", "value") == "Normal")
+    ok("pushing Volume puts it back to normal", s.wing["bus14_level"] == N and s.show("1/2/2", "value") == "-20 dB")
     for _ in range(to_top):
         s.turn("1/3/2", "right")
-    ok(f"Volume stops at {SRC_MAX} dB, {SRC_MAX - SRC_NORMAL} dB over normal", s.wing["bus14_level"] == float(SRC_MAX))
+    ok(f"Volume stops at +{SRC_MAX} dB, the top of the fader", s.wing["bus14_level"] == float(SRC_MAX))
     s.wing["bus14_level"] = -60.0
+    s.poll(TURN_SETTLE_MS)
     s.turn("1/3/2", "left")
     ok("Volume stops at -60 dB", s.wing["bus14_level"] == -60.0)
     s.press(SCENE_LOC["Lobby Stage"])
     s.wing["main1_level"] = -3.0
+    s.poll(TURN_SETTLE_MS)
     s.turn("1/3/2", "right")
     ok("with the Lobby Stage playing, Volume moves Main 1", s.wing["main1_level"] == -2.0
        and s.show("1/2/2", "title") == "LOBBY STAGE")
@@ -2991,7 +3338,7 @@ def tests():
     s.press(zone_block(1, 1))
     s.press(zone_block(2, 0))
     s.turn("1/3/2", "right")
-    ok("with mixed zones, Volume follows the first zone that is on", s.wing["bus15_level"] == N + 1
+    ok("with mixed zones, Volume follows the first zone that is on", s.wing["bus15_level"] == N + 2
        and s.wing["bus14_level"] == N)
     # Zone and mic dials, with the audio system on and nothing playing
     s = Sim()
@@ -3003,20 +3350,70 @@ def tests():
     s.run(KEYS["6/3/2"].down)
     ok("pushing the Zone dial restores it", s.wing["mtx1_level"] == -6.0)
     s.wing["mtx1_level"] = "-oo"
+    s.poll(TURN_SETTLE_MS)
     s.turn("6/3/2", "right")
     ok("the Zone dial lifts a zone from -oo", s.wing["mtx1_level"] == -89.0)
     s = Sim()
     s.press("1/1/0")
-    s.wing[f"ch{MIC_CH}_level"] = 0.0
+    mic_level, mic_mute = f"ch{MIC_CH}_level", f"ch{MIC_CH}_mute"
+    s.wing[mic_level] = float(MIC_MAX - 1)
     s.turn("1/3/3", "right")
-    ok("Mics stop at 0 dB", s.wing[f"ch{MIC_CH}_level"] == 0.0)
+    s.turn("1/3/3", "right")
+    ok(f"Mics go up to +{MIC_MAX} dB, the top of the Wing's fader, and stop", s.wing[mic_level] == float(MIC_MAX)
+       and s.show("1/2/3", "value") == f"+{MIC_MAX} dB" and s.show("1/2/3", "pct") == 100)
     s.run(KEYS["1/3/3"].down)
-    ok("pushing Mics mutes them", s.show("1/2/3", "value") == "Muted" and s.wing[f"ch{MIC_CH}_mute"] == 1)
+    ok("pushing Mics mutes them, with an empty bar", s.show("1/2/3", "value") == "Muted" and s.wing[mic_mute] == 1
+       and s.show("1/2/3", "pct") == 0)
     s.run(KEYS["1/3/3"].down)
-    ok("pushing again unmutes", s.show("1/2/3", "value") == "0 dB")
-    s.wing[f"ch{MIC_CH}_level"] = -20.0
-    ok("the Mics panel follows the Wing, not Companion's copy", s.show("1/2/3", "value") == "-20 dB")
+    ok("pushing again unmutes at the level they had", s.show("1/2/3", "value") == f"+{MIC_MAX} dB"
+       and s.wing[mic_mute] == 0 and s.wing[mic_level] == float(MIC_MAX))
+    s.wing[mic_level] = -20.0
+    ok("just after a turn, the Mics panel shows Companion's copy", s.show("1/2/3", "value") == f"+{MIC_MAX} dB")
+    s.poll(TURN_SETTLE_MS)
+    ok("once the dial is still, the Mics panel follows the Wing", s.show("1/2/3", "value") == "-20 dB")
     ok("no badge while the Wing reports", s.eval(KEYS["1/2/2"].show["badge"]) is False)
+    s.wing[mic_level] = float(MIC_MIN + 1)
+    s.turn("1/3/3", "left")
+    ok(f"Mics turn down to {MIC_MIN} dB", s.wing[mic_level] == MIC_MIN and s.wing[mic_mute] == 0)
+    s.turn("1/3/3", "left")
+    ok(f"one more click down mutes them and leaves the fader at {MIC_MIN} dB", s.wing[mic_mute] == 1
+       and s.wing[mic_level] == MIC_MIN and s.show("1/2/3", "value") == "Muted")
+    sent = len(s.wing_log)
+    s.turn("1/3/3", "left", gap=20)
+    s.turn("1/3/3", "left", gap=TURN_SETTLE_MS)
+    ok("turning down while muted does nothing", s.wing[mic_mute] == 1 and len(s.wing_log) == sent)
+    s.run(KEYS["1/3/3"].down)
+    ok(f"pushing unmutes them at {MIC_MIN} dB", s.wing[mic_mute] == 0 and s.show("1/2/3", "value") == f"{MIC_MIN} dB")
+    s = Sim()
+    s.press("1/1/0")
+    s.run(KEYS["1/3/3"].down)
+    s.turn("1/3/3", "right")
+    ok(f"turning Mics up while muted unmutes them at {MIC_MIN} dB, not where they were",
+       s.wing[mic_mute] == 0 and s.wing[mic_level] == MIC_MIN and s.show("1/2/3", "value") == f"{MIC_MIN} dB")
+    ok("the level is set before the mic unmutes", s.wing_log[-2:] == [("level", mic_level, MIC_MIN), ("mute", mic_mute, 0)])
+    s.turn("1/3/3", "right")
+    ok("the next click raises them from there, a big step at the quiet end", s.wing[mic_level] == -68)
+    for start, way, steps in ((-10.0, "left", [-12, -14]), (-30.0, "left", [-34]), (-60.0, "left", [-72, -80]),
+                              (5.0, "right", [6, 7])):
+        s.wing[mic_level] = start
+        s.poll(TURN_SETTLE_MS)
+        first = len(s.wing_log)
+        for _ in steps:
+            s.turn("1/3/3", way, gap=TURN_SETTLE_MS)
+        moved = [value for kind, name, value in s.wing_log[first:] if name == mic_level and kind == "level"]
+        ok(f"from {start} dB, slow Mics clicks {way} follow the fader's scale: {moved}", moved == steps)
+    s.wing[mic_level] = -40.0
+    s.poll(TURN_SETTLE_MS)
+    ok("the Mics bar sits where the Wing's fader does", s.show("1/2/3", "pct") == 18.75)
+    s.wing[mic_level] = "-oo"
+    s.poll(TURN_SETTLE_MS)
+    s.turn("1/3/3", "right", gap=TURN_SETTLE_MS)
+    ok(f"a mic pulled down to -oo on the Wing comes back up at {MIC_MIN} dB", s.wing[mic_level] == MIC_MIN)
+    s.wing[mic_level] = float(MIC_MIN - 5)
+    s.poll(TURN_SETTLE_MS)
+    s.turn("1/3/3", "left", gap=TURN_SETTLE_MS)
+    ok(f"turning down a mic already under {MIC_MIN} dB mutes it", s.wing[mic_mute] == 1
+       and s.wing[mic_level] == MIC_MIN - 5)
     s = Sim()
     s.press(SCENE_LOC["Music Inside"])
     ok("the zone strip shows source and level", s.show("6/2/2", "title") == "LOBBY · Playlist"
@@ -3030,17 +3427,17 @@ def tests():
     s.press(SCENE_LOC["Music Inside"])
     s.turn("1/3/2", "right")
     s.turn("1/3/2", "right")
-    ok("Volume moves with no Wing", s.show("1/2/2", "value") == "+2 dB" and s.vars["music_level"] == N + 2)
+    ok("Volume moves with no Wing", s.show("1/2/2", "value") == "-16 dB" and s.vars["music_level"] == N + 4)
     s.run(KEYS["1/3/2"].down)
-    ok("pushing Volume resets with no Wing", s.show("1/2/2", "value") == "Normal")
+    ok("pushing Volume resets with no Wing", s.show("1/2/2", "value") == "-20 dB")
     s.turn("1/3/3", "left")
-    ok("Mics move with no Wing", s.show("1/2/3", "value") == f"{MIC_START - 1} dB")
+    ok("Mics move with no Wing", s.show("1/2/3", "value") == "-12 dB")
     s.run(KEYS["1/3/3"].down)
     ok("Mics mute with no Wing", s.show("1/2/3", "value") == "Muted")
     s.turn("6/3/2", "left")
     ok("the Zone dial moves with no Wing", s.show("6/2/2", "value") == "-7 dB")
     s.turn("5/3/2", "right")
-    ok("the Bluetooth dial moves with no Wing", s.show("5/2/2", "value") == "+1 dB")
+    ok("the Bluetooth dial moves with no Wing", s.show("5/2/2", "value") == "-18 dB")
     # Close Up, which only the night schedule runs now, and triggers
     s = Sim()
     s.press("1/0/3")
@@ -3242,11 +3639,32 @@ def tests():
         e[0] == "tv5" or e == ("atem", TV_AUX[5], s.vars["atem_stream"])
         for e in s.log if e[0] in TV_CONNS or e[0] == "atem"))
     ok("every TV has its own ATEM output", len(set(TV_AUX.values())) == len(TVS))
-    sent = [tv_input(1, p) for p in (TV_ATEM_HDMI, TV_LOCAL_HDMI)] + [sony(1, c) for c in TV_POWER.values()]
+    sony_tv = next(n for n, *_ in TVS if n not in SAMSUNG_TVS)
+    sent = [tv_input(sony_tv, p) for p in (TV_ATEM_HDMI, TV_LOCAL_HDMI)] + [sony(sony_tv, c) for c in TV_POWER.values()]
     ok("every TV message is Sony's Simple IP form: 24 bytes, *S, C for control, ending in a line feed",
        all(len(m["options"]["id_send"]["value"] + m["options"]["id_end"]["value"]) == 24
            and m["options"]["id_send"]["value"].startswith("*SC") for m in sent)
        and sent[0]["options"]["id_send"]["value"] == "*SCINPT0000000100000001")
+    for n in SAMSUNG_TVS:
+        s = Sim()
+        s.press(content_key(n, "Stream"))
+        ok(f"the Samsung on test as TV {n} comes on, gets its ATEM output and HDMI {TV_ATEM_HDMI}, then the picture "
+           "again", hw(s, n) == [(f"tv{n}", "power_on")] + picture(s, n, "Stream") * 2)
+        s.log.clear()
+        s.press(content_key(n, "Local HDMI"))
+        ok(f"and Local HDMI is its HDMI {TV_LOCAL_HDMI} key", hw(s, n) == [(f"tv{n}", "power_on")]
+           + [(f"tv{n}", f"hdmi{TV_LOCAL_HDMI}")] * 2)
+        s.log.clear()
+        s.press(f"{TV_PAGE[n]}/0/0")
+        ok("and its switch turns it off", hw(s, n) == [(f"tv{n}", "power_off")])
+        acts = [a for a in walk(KEYS[TV_SEND[n]].down) if a["connectionId"] == f"tv{n}"]
+        ok(f"TV {n} gets only the Samsung module's actions, with its HDMI keys",
+           {(a["definitionId"], next(iter(a["options"].values()))["value"]) for a in acts}
+           == {("power", "powerOn"), ("power", "powerOff"), ("sendButton", f"KEY_HDMI{TV_ATEM_HDMI}"),
+               ("sendButton", f"KEY_HDMI{TV_LOCAL_HDMI}")})
+        ok(f"TV {n} waits {SAMSUNG_WAKE_MS / 1000:g} s before sending the picture again",
+           any(a["definitionId"] == "wait" and a["options"]["time"]["value"] == str(SAMSUNG_WAKE_MS)
+               for a in walk(KEYS[TV_SEND[n]].down)))
     s = Sim()
     ok("Stream starts as M/E 1 Program, Announcements as input 20, Custom as input 19 and SDI as Black",
        {c: s.vars[v] for c, (v, *_) in ATEM_SOURCES.items()}
@@ -3298,6 +3716,7 @@ def name_of(loc):
 CONDITIONS = {DECK: "the deck has the lights, not the iPad", NONE_PLAYLIST: "no zone is on Playlist",
               LIGHTS_ON: "the lights are on", f"{DECK} && {LIGHTS_ON}": "the deck has the lights and they are on",
               POWERED: "the audio system is on", f"!({LIGHTS_ON})": "the lights are off",
+              **{f"{CUR_SRC} == '{name}'": f"the Volume dial is on {name}" for name, *_ in VOLUME_SOURCES},
               **{f"{AREA_PICK} == {n}": f"{name} is picked" for n, name, *_ in LIGHT_AREAS},
               **{f"{ZONE_PICK} == {z}": f"{name} is picked" for z, name, *_ in ZONES},
               **{f"{ZONE_PICK} == {z} && {POWERED}": f"{name} is picked and the audio system is on"
@@ -3331,6 +3750,11 @@ def describe(actions, indent=0):
             v = a["options"]["value"]
             if o["name"] == "turn_n":
                 out.append(f"{pad}Set `turn_n` from how fast the dial turned (see Dial speed)")
+            elif o["name"] == "turn_held":
+                out.append(f"{pad}Set `turn_held` to 1 if this dial clicked last and the Wing refresh hasn't run "
+                           "since (see Dial speed)")
+            elif v["isExpression"] and v["value"] in SAID:
+                out.append(f"{pad}Set `{o['name']}` to {SAID[v['value']]}")
             elif v["isExpression"] and "\n" in v["value"]:
                 out.append(f"{pad}Set `{o['name']}` from the levels (see Lighting math)")
             else:
@@ -3339,7 +3763,7 @@ def describe(actions, indent=0):
             out.append(f"{pad}This surface goes to page {o['page']}")
         elif d == "logic_if":
             cond = a["children"]["condition"][0]["options"]["expression"]["value"]
-            out.append(f"{pad}If {CONDITIONS.get(cond, f'`{cond}`')}:")
+            out.append(f"{pad}If {CONDITIONS.get(cond) or SAID.get(cond) or f'`{cond}`'}:")
             out += describe(a["children"]["actions"], indent + 1)
             if a["children"]["else_actions"]:
                 out.append(f"{pad}Otherwise:")
@@ -3371,12 +3795,8 @@ def describe(actions, indent=0):
         elif d == "set-mute":
             out.append(f"{pad}Wing `{o['sel']}/mute` " + ("toggles" if o["mute"] == "-1" else f"= {o['mute']}"))
         elif d == "set-fader":
-            out.append(f"{pad}Wing `{o['sel']}/fdr` = {o['level']} dB")
-        elif d == "fader-delta":
-            if a["options"]["delta"]["isExpression"]:
-                out.append(f"{pad}Wing `{o['sel']}/fdr` moves by the same amount")
-            else:
-                out.append(f"{pad}Wing `{o['sel']}/fdr` {int(o['delta']):+d} dB")
+            level = f"`{o['level_variables']}`" if o.get("level_use_variables") else o["level"]
+            out.append(f"{pad}Wing `{o['sel']}/fdr` = {level} dB")
     return out
 
 
@@ -3445,7 +3865,10 @@ def write_doc(count, checks):
       f"| TVs | `tv1` to `tv{len(TVS)}`, {TV_IP.format(1)} to .8{len(TVS)}, TCP {TV_PORT} | Sony's Simple IP "
       "control through the generic TCP/UDP module: 24-byte messages, each ended with a line feed | "
       f"`{TV_POWER['power_on']}`, then `*SCINPT00000001{TV_ATEM_HDMI:08d}` for HDMI {TV_ATEM_HDMI} |\n"
-      f"| ATEM | `atem`, {ATEM_IP}{' (a placeholder, the factory address)' if ATEM_IP_PLACEHOLDER else ''}, "
+      + "".join(f"| Samsung TV on test | `tv{n}`, {ip}, port {SAMSUNG_PORT} | Samsung's home-TV remote API through "
+                "the Samsung Smart TV module, paired once on the TV, and Wake-on-LAN to turn it on | Set Power State, "
+                f"then the `KEY_HDMI{TV_ATEM_HDMI}` button |\n" for n, (ip, _) in SAMSUNG_TVS.items())
+      + f"| ATEM | `atem`, {ATEM_IP}{' (a placeholder, the factory address)' if ATEM_IP_PLACEHOLDER else ''}, "
       "4 M/E Constellation HD | An output's source through "
       f"the Blackmagic ATEM module | Output {TV_AUX[1]} takes `$(custom:atem_stream)` |\n")
     a("Key addresses read page/row/column from 0, the same form Companion uses. Rows and columns start at the top left.\n")
@@ -3564,7 +3987,8 @@ def write_doc(count, checks):
     a("| TV | Default | Connection | ATEM output | Its rows in the Library |\n| --- | --- | --- | --- | --- |")
     for tn, name, _, default in TVS:
         pg, row = tv_rows(tn)
-        a(f"| {name} | {default} | `tv{tn}`, {TV_IP.format(tn)} | {TV_AUX[tn]} | `{pg}/{row}` and `{pg}/{row + 1}` |")
+        a(f"| {name} | {default} | `tv{tn}`, {tv_ip(tn)}{', a Samsung on test' if tn in SAMSUNG_TVS else ''} | "
+          f"{TV_AUX[tn]} | `{pg}/{row}` and `{pg}/{row + 1}` |")
     a("")
     a("Every block that changes a TV sets its variable, then runs that TV's Send block, the first on its first row. "
       "The second row has a Show block for each thing it can show. Only "
@@ -3575,8 +3999,8 @@ def write_doc(count, checks):
     a(f"| Local HDMI | Nothing | HDMI {TV_LOCAL_HDMI}, the wall plate beside it |")
     a("| USB | Nothing | Nothing. Simple IP control has no USB input, so someone picks the USB player with the TV's "
       "remote |\n")
-    a(f"{TV_WAKE_MS / 1000:g} s later, each Send block sends the picture again, because a TV that was off may ignore an "
-      "input change while it wakes. The source numbers are custom variables, so a technician can change them in "
+    a(f"{TV_WAKE_MS / 1000:g} s later, {SAMSUNG_WAKE_MS / 1000:g} s for a Samsung, each Send block sends the picture "
+      "again, because a TV that was off may ignore an input change while it wakes. The source numbers are custom variables, so a technician can change them in "
       "Companion without touching a block. An ATEM numbers its inputs from 1, and 10010 is M/E 1 Program, 10020 M/E 2 "
       "Program, and so on. [TVs](15-tvs.md) has the settings each TV needs, and the TV sheet, "
       "[config/network/tvs.csv](../config/network/tvs.csv), lists each TV's address, model and cabling.\n")
@@ -3594,6 +4018,24 @@ def write_doc(count, checks):
     a("```\n" + turn_speed("all+") + "\n```\n")
     a("Then the dial's block moves by `turn_n` steps. To change the feel, set `turn_medium_ms` and `turn_fast_ms` "
       "on the Variables page. Set both to 0 for one step a click.\n")
+    a(f"A step on the Volume, Bluetooth and Mics dials is {FADER_STEP:g}% of the fader's travel, so they move the way the "
+      "Wing's fader does, and their panels fill the bar to where the fader sits. The Wing's fader law, which the Wing "
+      "module uses for fades, puts +10 to -10 dB on the top half of the travel, -10 to -30 dB on the next quarter, "
+      "-30 to -60 dB on the next 3/16 and -60 to -90 dB on the last 1/16. So a step is 1 dB near the top, 2 dB from "
+      "-10 to -30 dB and 4 dB from -30 to -60 dB. Each step works out where the level sits on the travel, moves it, "
+      "turns it back into dB and rounds it to a whole dB. A level below the dial's bottom, such as -oo, comes up to "
+      "the bottom first. The Zone dial moves 1 dB a step.\n")
+    a("An audio dial moves a level Companion keeps in step with the Wing, such as `mic_level`. The Wing module "
+      "reports a level only once the Wing has been quiet for 100 ms, so while a dial turns, the Wing's report is "
+      "behind the clicks already sent. Working from it made the fader jump back. So from a dial's first click until "
+      f"the Wing refresh, every {WING_POLL_S} seconds, runs after the dial has been still for `turn_settle_ms`, the "
+      "dial's clicks and its panel use Companion's copy: each click sets `turn_held` to 1 when the same dial clicked "
+      "last and the refresh hasn't run since. The refresh asks the Wing for every level and mute the panels show, "
+      f"waits {WING_POLL_WAIT_MS} ms for the answers, then sets `wing_poll`. From then on the dial's next click works "
+      "from the Wing's level, rounded, and the panel shows the Wing's level and follows any change made on the Wing. "
+      f"`turn_settle_ms` starts at {TURN_SETTLE_MS} ms. Companion works out a panel's "
+      "expression again only when a variable it read last time changes, never just because time passed, which is "
+      "why a panel tests `turn_ms` against `wing_poll` and not against the clock.\n")
     a("## Lighting math\n")
     a("Companion keeps the lights as levels, and one block turns them into DMX. `lt_all` is the All Lights dial. "
       "`lt_linear` is the linear lights, and each area on Light Control has its own level: "
@@ -3611,27 +4053,21 @@ def write_doc(count, checks):
       "changes can put those channels in `STATIC_CHANNELS`.\n")
     a("## Library\n")
     a("No surface shows these pages. Keep them where they are, because every real key points to them by address.\n")
-    a("### Page 20: Zones 1 to 4\n")
-    a(library_table(20) + "\n")
-    a("### Page 21: Zone 5, music, rooms and power\n")
-    a(library_table(21) + "\n")
-    a("### Page 22: Lights and dials\n")
-    a(library_table(22) + "\n")
-    a("### Page 23: Light areas\n")
-    a(library_table(23) + "\n")
-    a("### Page 24: Zone switches and Bluetooth\n")
-    a(library_table(24) + "\n")
-    a("### Page 25: TVs 1 to 4\n")
-    a("A row for each TV: Send, On, Off, then a block for each thing it can show.\n")
-    a(library_table(25) + "\n")
-    a("### Page 26: TVs 5 to 7, and every TV\n")
-    a(library_table(26) + "\n")
+    for page, (name, kind) in PAGES.items():  # headings come from the page names, so they always match Companion
+        if kind != "library":
+            continue
+        a(f"### Page {page}: {name.removeprefix('Library: ')}\n")
+        if page == TV_LIB_FIRST:
+            a("Two rows for each TV, two TVs to a page: Send, On and Off, then a Show block for each thing it can "
+              "show.\n")
+        a(library_table(page) + "\n")
     a("## Triggers\n")
     a("| Trigger | Starts | Does |\n| --- | --- | --- |")
     for t_ in TRIGGERS.values():
         c = t_["control"]
         a(f"| {c['options']['name']} | {'On' if c['options']['enabled'] else 'Off'} | {t_['does']} |")
-    a("\nThe three schedule triggers import turned off. Set their times and turn them on after launch.\n")
+    a("\nThe three schedule triggers import turned off. Set their times and turn them on after launch. The startup "
+      "and Wing refresh triggers start on.\n")
     a("## Custom variables\n")
     a("All of these keep their value through a restart, except " +
       ", ".join(f"`{n}`" for n in VARIABLES if n in PERSIST_OFF) + ".\n")
@@ -3796,6 +4232,7 @@ CONTROLS: dict[str, dict] = {}
 
 
 def main():
+    sys.stdout.reconfigure(errors="replace")  # a check's name may hold a character the console can't show, such as ∞
     build_library()
     build_pages()
     build_triggers()
