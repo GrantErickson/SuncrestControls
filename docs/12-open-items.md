@@ -21,6 +21,7 @@ The church's broader music license settles the licensing question, so these rema
 - [ ] Confirm which zone the powered speakers serve, and that the AV Wi-Fi reaches their Kasa plugs
 - [ ] Set up one BRAVIA 3 II on the bench and check Remote start and Simple IP control turn it on and switch its inputs, before ordering the other six. See [TVs](15-tvs.md#setting-up-each-bravia-3-ii)
 - [ ] Fill in the [TV sheet](../config/network/tvs.csv) as the TVs go up: location, size, serial, MAC address and firmware
+- [ ] Decide how Companion and the Wing app iPad reach the Wing at 192.168.0.30, outside the planned 192.168.50 network: move the AV VLAN to 192.168.0, or route UDP 2223 to the Wing. See [Network plan](04-network-plan.md)
 - [ ] Get the ATEM's real address and route UDP 9910 to it from the Companion host, then replace the placeholder, 192.168.10.240, in the `atem` connection
 - [ ] Choose the ATEM source for the SDI key, now Black, and whether to give the key a friendlier name
 - [ ] Count the ATEM's control connections with production, since Companion adds one
@@ -31,5 +32,5 @@ The church's broader music license settles the licensing question, so these rema
 - [ ] Confirm the Denon DN-200BR is still available, or pick another receiver with line outputs
 - [ ] Confirm the starting matrix levels and the seven playlist names, and that the WiiM holds seven presets
 - [ ] Pass all 16 bench tests, including the first real import of the Stream Deck file and test 4, what the ODE does when Companion stops
-- [ ] Set the mic channel levels so Bus 13 at 0 dB stays below feedback in every zone
+- [ ] Set Bus 13's fader so the mic, on channel 1, stays below feedback in every zone with its fader at 0 dB
 - [ ] Choose whether swiping the touch strip turns pages. The setup turns it off

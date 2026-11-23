@@ -4305,7 +4305,7 @@
          },
          "text": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))))} dB`)"
+          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))))} dB`)"
          },
          "fontsize": {
           "isExpression": false,
@@ -4329,7 +4329,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
          },
          "outlineColor": {
           "isExpression": false,
@@ -4411,7 +4411,7 @@
          ],
          "enabled": {
           "isExpression": true,
-          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
+          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
          },
          "opacity": {
           "isExpression": false,
@@ -4427,7 +4427,7 @@
          },
          "width": {
           "isExpression": true,
-          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
+          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
          },
          "height": {
           "isExpression": false,
@@ -4439,7 +4439,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
          },
          "cornerRadius": {
           "isExpression": false,
@@ -9796,7 +9796,7 @@
          },
          "text": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))))} dB`)"
+          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))))} dB`)"
          },
          "fontsize": {
           "isExpression": false,
@@ -9820,7 +9820,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
          },
          "outlineColor": {
           "isExpression": false,
@@ -9902,7 +9902,7 @@
          ],
          "enabled": {
           "isExpression": true,
-          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
+          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
          },
          "opacity": {
           "isExpression": false,
@@ -9918,7 +9918,7 @@
          },
          "width": {
           "isExpression": true,
-          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
+          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
          },
          "height": {
           "isExpression": false,
@@ -9930,7 +9930,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
          },
          "cornerRadius": {
           "isExpression": false,
@@ -15279,7 +15279,7 @@
          },
          "text": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))))} dB`)"
+          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))))} dB`)"
          },
          "fontsize": {
           "isExpression": false,
@@ -15303,7 +15303,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
          },
          "outlineColor": {
           "isExpression": false,
@@ -15385,7 +15385,7 @@
          ],
          "enabled": {
           "isExpression": true,
-          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
+          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
          },
          "opacity": {
           "isExpression": false,
@@ -15401,7 +15401,7 @@
          },
          "width": {
           "isExpression": true,
-          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
+          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
          },
          "height": {
           "isExpression": false,
@@ -15413,7 +15413,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
          },
          "cornerRadius": {
           "isExpression": false,
@@ -22058,7 +22058,7 @@
          },
          "text": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))))} dB`)"
+          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))))} dB`)"
          },
          "fontsize": {
           "isExpression": false,
@@ -22082,7 +22082,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
          },
          "outlineColor": {
           "isExpression": false,
@@ -22164,7 +22164,7 @@
          ],
          "enabled": {
           "isExpression": true,
-          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
+          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
          },
          "opacity": {
           "isExpression": false,
@@ -22180,7 +22180,7 @@
          },
          "width": {
           "isExpression": true,
-          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
+          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
          },
          "height": {
           "isExpression": false,
@@ -22192,7 +22192,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
          },
          "cornerRadius": {
           "isExpression": false,
@@ -27408,7 +27408,7 @@
          },
          "text": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))))} dB`)"
+          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))))} dB`)"
          },
          "fontsize": {
           "isExpression": false,
@@ -27432,7 +27432,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
          },
          "outlineColor": {
           "isExpression": false,
@@ -27514,7 +27514,7 @@
          ],
          "enabled": {
           "isExpression": true,
-          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
+          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
          },
          "opacity": {
           "isExpression": false,
@@ -27530,7 +27530,7 @@
          },
          "width": {
           "isExpression": true,
-          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
+          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
          },
          "height": {
           "isExpression": false,
@@ -27542,7 +27542,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
          },
          "cornerRadius": {
           "isExpression": false,
@@ -33872,7 +33872,7 @@
          },
          "text": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))))} dB`)"
+          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))))} dB`)"
          },
          "fontsize": {
           "isExpression": false,
@@ -33896,7 +33896,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
          },
          "outlineColor": {
           "isExpression": false,
@@ -33978,7 +33978,7 @@
          ],
          "enabled": {
           "isExpression": true,
-          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
+          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
          },
          "opacity": {
           "isExpression": false,
@@ -33994,7 +33994,7 @@
          },
          "width": {
           "isExpression": true,
-          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
+          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
          },
          "height": {
           "isExpression": false,
@@ -34006,7 +34006,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
          },
          "cornerRadius": {
           "isExpression": false,
@@ -40153,7 +40153,7 @@
          },
          "text": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))))} dB`)"
+          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))))} dB`)"
          },
          "fontsize": {
           "isExpression": false,
@@ -40177,7 +40177,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
          },
          "outlineColor": {
           "isExpression": false,
@@ -40259,7 +40259,7 @@
          ],
          "enabled": {
           "isExpression": true,
-          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
+          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
          },
          "opacity": {
           "isExpression": false,
@@ -40275,7 +40275,7 @@
          },
          "width": {
           "isExpression": true,
-          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
+          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
          },
          "height": {
           "isExpression": false,
@@ -40287,7 +40287,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
          },
          "cornerRadius": {
           "isExpression": false,
@@ -45819,7 +45819,7 @@
          },
          "text": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))))} dB`)"
+          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))))} dB`)"
          },
          "fontsize": {
           "isExpression": false,
@@ -45843,7 +45843,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
          },
          "outlineColor": {
           "isExpression": false,
@@ -45925,7 +45925,7 @@
          ],
          "enabled": {
           "isExpression": true,
-          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
+          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
          },
          "opacity": {
           "isExpression": false,
@@ -45941,7 +45941,7 @@
          },
          "width": {
           "isExpression": true,
-          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
+          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
          },
          "height": {
           "isExpression": false,
@@ -45953,7 +45953,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
          },
          "cornerRadius": {
           "isExpression": false,
@@ -51485,7 +51485,7 @@
          },
          "text": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))))} dB`)"
+          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))))} dB`)"
          },
          "fontsize": {
           "isExpression": false,
@@ -51509,7 +51509,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
          },
          "outlineColor": {
           "isExpression": false,
@@ -51591,7 +51591,7 @@
          ],
          "enabled": {
           "isExpression": true,
-          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
+          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
          },
          "opacity": {
           "isExpression": false,
@@ -51607,7 +51607,7 @@
          },
          "width": {
           "isExpression": true,
-          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
+          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
          },
          "height": {
           "isExpression": false,
@@ -51619,7 +51619,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
          },
          "cornerRadius": {
           "isExpression": false,
@@ -57151,7 +57151,7 @@
          },
          "text": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))))} dB`)"
+          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))))} dB`)"
          },
          "fontsize": {
           "isExpression": false,
@@ -57175,7 +57175,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
          },
          "outlineColor": {
           "isExpression": false,
@@ -57257,7 +57257,7 @@
          ],
          "enabled": {
           "isExpression": true,
-          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
+          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
          },
          "opacity": {
           "isExpression": false,
@@ -57273,7 +57273,7 @@
          },
          "width": {
           "isExpression": true,
-          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
+          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
          },
          "height": {
           "isExpression": false,
@@ -57285,7 +57285,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
          },
          "cornerRadius": {
           "isExpression": false,
@@ -62817,7 +62817,7 @@
          },
          "text": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))))} dB`)"
+          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))))} dB`)"
          },
          "fontsize": {
           "isExpression": false,
@@ -62841,7 +62841,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
          },
          "outlineColor": {
           "isExpression": false,
@@ -62923,7 +62923,7 @@
          ],
          "enabled": {
           "isExpression": true,
-          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
+          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
          },
          "opacity": {
           "isExpression": false,
@@ -62939,7 +62939,7 @@
          },
          "width": {
           "isExpression": true,
-          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
+          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
          },
          "height": {
           "isExpression": false,
@@ -62951,7 +62951,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
          },
          "cornerRadius": {
           "isExpression": false,
@@ -68483,7 +68483,7 @@
          },
          "text": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))))} dB`)"
+          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))))} dB`)"
          },
          "fontsize": {
           "isExpression": false,
@@ -68507,7 +68507,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
          },
          "outlineColor": {
           "isExpression": false,
@@ -68589,7 +68589,7 @@
          ],
          "enabled": {
           "isExpression": true,
-          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
+          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
          },
          "opacity": {
           "isExpression": false,
@@ -68605,7 +68605,7 @@
          },
          "width": {
           "isExpression": true,
-          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
+          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
          },
          "height": {
           "isExpression": false,
@@ -68617,7 +68617,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
          },
          "cornerRadius": {
           "isExpression": false,
@@ -74149,7 +74149,7 @@
          },
          "text": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))))} dB`)"
+          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))))} dB`)"
          },
          "fontsize": {
           "isExpression": false,
@@ -74173,7 +74173,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
          },
          "outlineColor": {
           "isExpression": false,
@@ -74255,7 +74255,7 @@
          ],
          "enabled": {
           "isExpression": true,
-          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
+          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
          },
          "opacity": {
           "isExpression": false,
@@ -74271,7 +74271,7 @@
          },
          "width": {
           "isExpression": true,
-          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
+          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
          },
          "height": {
           "isExpression": false,
@@ -74283,7 +74283,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
          },
          "cornerRadius": {
           "isExpression": false,
@@ -79815,7 +79815,7 @@
          },
          "text": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))))} dB`)"
+          "value": "!($(custom:audio_power) == 1) ? 'Off' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? 'Muted' : `${round(($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))))} dB`)"
          },
          "fontsize": {
           "isExpression": false,
@@ -79839,7 +79839,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#ffffff')"
          },
          "outlineColor": {
           "isExpression": false,
@@ -79921,7 +79921,7 @@
          ],
          "enabled": {
           "isExpression": true,
-          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
+          "value": "(!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) > 0"
          },
          "opacity": {
           "isExpression": false,
@@ -79937,7 +79937,7 @@
          },
          "width": {
           "isExpression": true,
-          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
+          "value": "88 * (!($(custom:audio_power) == 1) ? 0 : max(0, min(100, (($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - (-60)) * 100 / 60))) / 100"
          },
          "height": {
           "isExpression": false,
@@ -79949,7 +79949,7 @@
          },
          "color": {
           "isExpression": true,
-          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
+          "value": "!($(custom:audio_power) == 1) ? '#59616b' : ((isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1 ? '#ff6b57' : '#3fd6c2')"
          },
          "cornerRadius": {
           "isExpression": false,
@@ -104980,7 +104980,7 @@
        "stepProgression": "auto",
        "rotaryActions": false,
        "canModifyStyleInApis": false,
-       "notes": "Raises the mic bus by 1 dB for each step in `turn_n`, stopping at 0 dB. Only while the audio is on"
+       "notes": "Raises the mic channel by 1 dB for each step in `turn_n`, stopping at 0 dB. Only while the audio is on"
       },
       "style": {
        "layers": [
@@ -105182,7 +105182,7 @@
                  "options": {
                   "expression": {
                    "isExpression": true,
-                   "value": "($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) < 0"
+                   "value": "($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) < 0"
                   }
                  }
                 }
@@ -105204,7 +105204,7 @@
                   },
                   "value": {
                    "isExpression": true,
-                   "value": "min(0, ($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) + $(custom:turn_n))"
+                   "value": "min(0, ($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) + $(custom:turn_n))"
                   }
                  }
                 },
@@ -105216,11 +105216,11 @@
                  "options": {
                   "sel": {
                    "isExpression": false,
-                   "value": "/bus/13"
+                   "value": "/ch/1"
                   },
                   "delta": {
                    "isExpression": true,
-                   "value": "min(0, ($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) + $(custom:turn_n)) - ($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level)))"
+                   "value": "min(0, ($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) + $(custom:turn_n)) - ($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level)))"
                   },
                   "fadeDuration": {
                    "isExpression": false,
@@ -105260,7 +105260,7 @@
        "stepProgression": "auto",
        "rotaryActions": false,
        "canModifyStyleInApis": false,
-       "notes": "Lowers the mic bus by 1 dB for each step in `turn_n`, stopping at -60 dB. Only while the audio is on"
+       "notes": "Lowers the mic channel by 1 dB for each step in `turn_n`, stopping at -60 dB. Only while the audio is on"
       },
       "style": {
        "layers": [
@@ -105462,7 +105462,7 @@
                  "options": {
                   "expression": {
                    "isExpression": true,
-                   "value": "($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) > -60"
+                   "value": "($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) > -60"
                   }
                  }
                 }
@@ -105484,7 +105484,7 @@
                   },
                   "value": {
                    "isExpression": true,
-                   "value": "max(-60, ($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - $(custom:turn_n))"
+                   "value": "max(-60, ($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - $(custom:turn_n))"
                   }
                  }
                 },
@@ -105496,11 +105496,11 @@
                  "options": {
                   "sel": {
                    "isExpression": false,
-                   "value": "/bus/13"
+                   "value": "/ch/1"
                   },
                   "delta": {
                    "isExpression": true,
-                   "value": "max(-60, ($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level))) - $(custom:turn_n)) - ($(wing:bus13_level) == '-oo' ? -90 : (isNumber($(wing:bus13_level)) ? $(wing:bus13_level) : $(custom:mic_level)))"
+                   "value": "max(-60, ($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level))) - $(custom:turn_n)) - ($(wing:ch1_level) == '-oo' ? -90 : (isNumber($(wing:ch1_level)) ? $(wing:ch1_level) : $(custom:mic_level)))"
                   },
                   "fadeDuration": {
                    "isExpression": false,
@@ -105540,7 +105540,7 @@
        "stepProgression": "auto",
        "rotaryActions": false,
        "canModifyStyleInApis": false,
-       "notes": "Mutes or unmutes the mic bus. Only while the audio is on"
+       "notes": "Mutes or unmutes the mic channel. Only while the audio is on"
       },
       "style": {
        "layers": [
@@ -105742,7 +105742,7 @@
                  "options": {
                   "expression": {
                    "isExpression": true,
-                   "value": "(isNumber($(wing:bus13_mute)) ? $(wing:bus13_mute) : $(custom:mic_muted)) == 1"
+                   "value": "(isNumber($(wing:ch1_mute)) ? $(wing:ch1_mute) : $(custom:mic_muted)) == 1"
                   }
                  }
                 }
@@ -105756,7 +105756,7 @@
                  "options": {
                   "sel": {
                    "isExpression": false,
-                   "value": "/bus/13"
+                   "value": "/ch/1"
                   },
                   "mute": {
                    "isExpression": false,
@@ -105794,7 +105794,7 @@
                  "options": {
                   "sel": {
                    "isExpression": false,
-                   "value": "/bus/13"
+                   "value": "/ch/1"
                   },
                   "mute": {
                    "isExpression": false,
@@ -139113,7 +139113,7 @@
    "sortOrder": 46
   },
   "mic_level": {
-   "description": "Mic bus fader in dB, kept in step with the Wing",
+   "description": "Mic channel fader in dB, kept in step with the Wing",
    "defaultValue": "-10",
    "persistCurrentValue": true,
    "sortOrder": 47
@@ -142003,7 +142003,7 @@
    "sortOrder": 0,
    "updatePolicy": "stable",
    "config": {
-    "host": "192.168.50.20",
+    "host": "192.168.0.30",
     "model": "rack",
     "fadeUpdateRate": 50,
     "statusPollUpdateRate": 3000,

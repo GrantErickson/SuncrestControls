@@ -24,7 +24,7 @@ Companion holds the button layouts, the logic and the lights. Every page, artwor
 
 | Connection | Module | Settings in the file |
 | --- | --- | --- |
-| `wing` | [behringer-wing](https://github.com/bitfocus/companion-module-behringer-wing) | Desk IP 192.168.50.20, desk type Wing Rack |
+| `wing` | [behringer-wing](https://github.com/bitfocus/companion-module-behringer-wing) | Desk IP 192.168.0.30, desk type Wing Rack |
 | `dmx` | [generic-artnet](https://github.com/bitfocus/companion-module-generic-artnet) | Receiver 192.168.50.31, the ODE, universe 0 |
 | `wiim` | [generic-http](https://github.com/bitfocus/companion-module-generic-http) | Base URL `https://192.168.50.40/`, unauthorized certificates accepted |
 | `power` | [generic-tcp-udp](https://github.com/bitfocus/companion-module-generic-tcp-udp) | UDP to 192.168.50.45, port 30333, the Juice Goose iP-1520 that sequences the rack's switched outlets |
@@ -122,7 +122,7 @@ The touch strip shows each dial's value and a level bar above it. The first two 
 | Area, on Light Control | The picked area, 5% a click. With the lights off, turning up brings that area on by itself | That area back to the look's level |
 | Bluetooth, on Audio Source | Bluetooth's level, 1 dB a click, playing or not, up to 26 dB over normal | Bluetooth back to normal |
 | Zone, on Audio Zones | The picked zone, 1 dB a click | That zone back to its normal level |
-| Mics | The mic bus, 1 dB a click, up to 0 dB | Mute or unmute the mics |
+| Mics | The mic, Wing channel 1, 1 dB a click, up to 0 dB | Mute or unmute the mic |
 
 Every dial speeds up when it's turned quickly. A slow click moves one step, as above. Clicks less than 120 ms apart move 2 steps each, and less than 50 ms apart move 4. Turning the other way, or another dial, starts slow again, and levels still stop at their limits. Each turn works this out from Companion's `$(this:delta)`, the clicks the deck reported, and the time since the last click.
 

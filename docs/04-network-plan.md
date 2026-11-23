@@ -1,12 +1,12 @@
 # Network plan
 
-Everything sits on its own AV VLAN, separate from guest Wi-Fi. OSC and Art-Net have no login, so anyone who can reach this network can control the room. Companion sends Art-Net unicast to the ODE, not broadcast. These addresses are examples, so change the subnet if it collides with the building network.
+Everything sits on its own AV VLAN, separate from guest Wi-Fi. OSC and Art-Net have no login, so anyone who can reach this network can control the room. Companion sends Art-Net unicast to the ODE, not broadcast. These addresses are examples, except the Wing's, so change the subnet if it collides with the building network.
 
 | Device | Address | Connection | Power |
 | --- | --- | --- | --- |
 | Gateway for the AV VLAN | 192.168.50.1 | Building network | Building network |
 | Companion host | 192.168.50.10 | Switch | UPS |
-| Wing Rack | 192.168.50.20 | Switch | Always-on rack power |
+| Wing Rack | 192.168.0.30, its real address, outside this plan's 192.168.50 | Switch | Always-on rack power |
 | ODE Mk3 | 192.168.50.31 | Switch | PoE or UPS |
 | WiiM Pro Plus | 192.168.50.40 | Switch, needs internet | Always-on rack power |
 | Rack power, Juice Goose iP-1520 | 192.168.50.45 | Switch | 20 A circuit |
@@ -29,6 +29,7 @@ Everything sits on its own AV VLAN, separate from guest Wi-Fi. OSC and Art-Net h
 6. Put the switch, Companion host and ODE Mk3 on the UPS. Companion sends the lights, so all three carry them. The Juice Goose remembers which pods were on and sequences them back after an outage.
 7. Keep the Wing Rack, the WiiM and the Bluetooth receiver on power that is never switched, such as the Juice Goose's unswitched outlet. Only gear that turns off with the audio goes on its pods.
 8. Let the Companion host reach the production ATEM, and nothing else on this network. Route UDP 9910 from the Companion host to the ATEM's address. Video reaches the TVs over SDI, not this network.
-9. Set up a new ODE on its own. It falls back to 192.168.0.10 without DHCP, which can clash with other new devices.
+9. Let the Companion host and the Wing app iPad reach the Wing at 192.168.0.30, on UDP port 2223. It's outside 192.168.50, so either put this VLAN on 192.168.0 and move the other addresses to match, or route UDP 2223 to the Wing, as for the ATEM.
+10. Set up a new ODE on its own. It falls back to 192.168.0.10 without DHCP, which can clash with other new devices.
 
 [ENTTEC recommends wired connections where possible](https://support.enttec.com/dmx/edmx-art-net-sacn-networking/edmx-art-net-sacn-sending-over-wifi). For important events, consider a USB-C Ethernet adapter on the lighting iPad instead of Wi-Fi.

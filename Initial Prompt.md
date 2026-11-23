@@ -97,6 +97,8 @@ Pleas ask questions and help me work through the best technical solution for thi
 45. **ATEM, sources and TV model (2026-11-22):** The ATEM is a Blackmagic Design ATEM 4 M/E Constellation HD. M/E 1 is the stream, input 20 is announcements, and input 19 is custom. Assume the TVs are Sony BRAVIA 3 II.
 46. **TV sheet (2026-11-22):** Make a file to list the TVs and their IP addresses, and so on.
 47. **SDI option and the ATEM (2026-11-22):** Keep the USB key, and add another SDI option. The ATEM outputs are fine. The ATEM is always on. Use a placeholder for the ATEM address.
+48. **Wing address (2026-11-22):** The Wing is at 192.168.0.30.
+49. **Mic channel (2026-11-22):** The mic is on channel 1, and that is what the dial adjusts.
 
 ## Decision log
 
@@ -104,6 +106,8 @@ Newest first. Add a row whenever a decision is made or changed.
 
 | Date | Decision | Status |
 |---|---|---|
+| 2026-11-22 | The mic is on Wing channel 1 (`MIC_CH`). The Mics dial moves `/ch/1`'s fader from -60 to 0 dB, starting at -10 dB, and pushing it mutes `/ch/1`; the panel reads `ch1_level` and `ch1_mute`. Channel 1 still reaches every zone through Bus 13, post-fader, whose fader is now set once as the ceiling below feedback and never moved by Companion. Channel 1 joins the Global Safes | Decided by the user |
+| 2026-11-22 | `WING_IP` is 192.168.0.30, the Wing Rack's real address, replacing the example 192.168.50.20. The rest of the network plan stays on the example 192.168.50, so either the AV VLAN moves to 192.168.0, or Companion and the Wing app iPad reach the Wing by a route on UDP 2223 | Address given by the user. Which network, pending |
 | 2026-11-22 | TV pages get a sixth choice, SDI (BNC plug icon), another ATEM source in `atem_sdi`, Black (0) until chosen. USB stays. Each TV page is now its switch, Stream, Announcements, Custom, SDI, USB, Local HDMI and Back; Home leaves the TV pages and stays on the TVs page. Each TV now has two Library rows (Send, On, Off; then six Show blocks), two TVs a page on pages 25 to 28, with the All TVs blocks at 28/2. ATEM outputs 18 to 24 confirmed. The ATEM is always on. `ATEM_IP` is the factory address 192.168.10.240 as a placeholder (`ATEM_IP_PLACEHOLDER`) | Decided by the user. The SDI source, a friendlier name for it, and the real ATEM address pending |
 | 2026-11-22 | The TV sheet is `config/network/tvs.csv`, one row per TV: name, location, make and model, size, serial, MAC and IP address, Companion connection, control, deck page, ATEM output and its name, what feeds HDMI 1 and 2, converter, default, firmware, status and notes. build.py keeps its own copy of the names, addresses, outputs and defaults | Done. Fill in as the TVs go up |
 | 2026-11-22 | TVs are Sony BRAVIA 3 II, a home model. Sony requires HTTPS for REST control on TVs released since August 1, 2025 (for Europe's radio rules, maybe wider), and the sony-bravia module is HTTP only, so `tv1` to `tv7` now use Sony's Simple IP control: generic-tcp-udp, TCP 20060, 24-byte messages ending in a line feed (`*SCPOWR…1` on, `…0` off, `*SCINPT0000000100000001` HDMI 1), with replies saved to `$(tvN:tcp_response)`. No pre-shared key. Each TV needs Remote start (or Control remotely) and Simple IP control on, Idle TV standby and BRAVIA Sync off. USB can't be selected over Simple IP, so it stays on the remote. The ATEM is a 4 M/E Constellation HD (24 outputs, `atem` model 20), so outputs 18 to 24 fit, and 3G-SDI converters do. Sources: Stream M/E 1 Program (10010), Announcements input 20, Custom input 19 | Decided by the user's answers. Test one TV on the bench before ordering the rest. Since the SDI row above: outputs confirmed, USB stays, ATEM always on, placeholder address |
@@ -138,7 +142,7 @@ Newest first. Add a row whenever a decision is made or changed.
 | 2026-11-15 | Doors show Lights Off, Lights 1 to 3, a level ring, Dimmer and Brighter, in place of the eight named presets | Replaced: doors share the rack's pages |
 | 2026-11-15 | Companion sends the lights as Art-Net to the ODE through its generic-artnet module. The S-Play Mini is dropped | Decided |
 | 2026-11-15 | Lighting engine for the light dials, replacing the S-Play Mini, which can't dim live: DMX Core 100, Lumen, Pharos LPC, QLC+ or Companion's own Art-Net module | Replaced: Companion's own Art-Net module was chosen |
-| 2026-11-15 | Wireless mics reach every zone in every source mode through their own bus, and the Mic dial sets their level | Decided |
+| 2026-11-15 | Wireless mics reach every zone in every source mode through their own bus, and the Mic dial sets their level | Decided. Since 2026-11-22 the dial moves channel 1, the mic, and the bus is fixed |
 | 2026-11-15 | Rack main page: Lights Off, 1, 2 and 3 on top; Audio Off, Auditorium, Music and More below; dials for all lights, linear lights, volume and mic | Decided |
 | 2026-11-11 | Rack deck stays a Stream Deck +, with a simple main page of 7 keys and 3 knobs: light levels 1 to 3, lights off, stream, auditorium, audio off, and knobs for volume, brightness and mic | Stream Deck + decided, the + XL is too much for volunteers. Layout replaced by the 2026-11-15 row |
 | 2026-11-11 | Rack deck: Stream Deck + XL (36 keys, 6 dials), Stream Deck + (8 keys, 4 dials) or a keys-only deck | Replaced by the row above |

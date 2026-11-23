@@ -37,7 +37,8 @@ DOC = ROOT / "docs" / "14-stream-deck-pages.md"
 IMAGES = ROOT / "docs" / "images"
 
 # ---------------------------------------------------------------- the system
-WING_IP, ODE_IP, WIIM_IP = "192.168.50.20", "192.168.50.31", "192.168.50.40"
+WING_IP = "192.168.0.30"  # the Wing Rack's real address. It's on 192.168.0, outside the example 192.168.50 plan
+ODE_IP, WIIM_IP = "192.168.50.31", "192.168.50.40"
 POWER_IP = "192.168.50.45"  # Juice Goose iP-1520: sequences the rack's switched outlets, the amplifiers among them
 POWER_PORT = 30333          # the iP-1520's UDP console port. UDP is off until it's enabled on the unit's web page
 SEQ_SECONDS = 1             # seconds between the iP-1520's three outlet pods as it sequences them on or off
@@ -75,7 +76,8 @@ SOURCES = [  # name, Wing send source, label in Library blocks, icon
     ("Bluetooth", "/bus/16", "Bluetooth", "bluetooth"),
     ("Lobby Stage", "/main/1", "Lobby Stage", "stage"),
 ]
-MIC_BUS = 13  # wireless mics, always sent to every zone matrix
+MIC_CH = 1  # the mic's Wing channel. The Mics dial moves its fader, and pushing the dial mutes it. The Wing sends it to
+            # every zone matrix through Bus 13, whose fader is fixed at the feedback ceiling. Companion never moves Bus 13
 LOOKS = [  # number, linear %, every light area's %. Starting points: holding a Lights key saves over them
     (1, 35, 35),
     (2, 65, 65),
@@ -159,7 +161,7 @@ VOLUME_SOURCES = [  # zone source, its Wing fader, the variable that keeps it, p
     ("Lobby Stage", "/main/1", "lobby_level", "LOBBY STAGE", "audio"),
 ]
 MIC_MIN, MIC_MAX = -60, 0
-MIC_START = -10                    # Bus 13's level in the Lobby Base snapshot
+MIC_START = -10                    # channel 1's level in the Lobby Base snapshot
 
 ACCENTS = {  # one color per kind of key. Every tile, bar and ring color is worked out from these
     "light": "#ffb52e", "linear": "#f2d49b", "audio": "#4aa8ff", "music": "#a888ff", "mic": "#3fd6c2",
@@ -434,8 +436,8 @@ def tracked(wing_var, custom):
 
 
 ZONE_NOW = {z: tracked(f"$(wing:mtx{mx}_level)", f"z{z}_level") for z, _, mx, *_ in ZONES}
-MIC_NOW = tracked(f"$(wing:bus{MIC_BUS}_level)", "mic_level")
-MIC_MUTED = f"(isNumber($(wing:bus{MIC_BUS}_mute)) ? $(wing:bus{MIC_BUS}_mute) : $(custom:mic_muted)) == 1"
+MIC_NOW = tracked(f"$(wing:ch{MIC_CH}_level)", "mic_level")
+MIC_MUTED = f"(isNumber($(wing:ch{MIC_CH}_mute)) ? $(wing:ch{MIC_CH}_mute) : $(custom:mic_muted)) == 1"
 WING_ONLINE = "isNumber($(wing:mtx1_level)) || $(wing:mtx1_level) == '-oo'"
 
 
@@ -755,14 +757,14 @@ def build_library():
                                           [wing_level(sel, SRC_NORMAL), setvar(var, SRC_NORMAL)])
                                      for name, sel, var, _, _ in VOLUME_SOURCES],
         f"Puts whatever is playing back to its normal level, {SRC_NORMAL} dB")
-    mic = f"/bus/{MIC_BUS}"
+    mic = f"/ch/{MIC_CH}"
     lib(MIC_UP, "Mic\nUp", [when(POWERED, [fader_step("mic_level", MIC_NOW, mic, MIC_MIN, MIC_MAX, 1)])],
-        f"Raises the mic bus by 1 dB for each step in `turn_n`, stopping at {MIC_MAX} dB. Only while the audio is on")
+        f"Raises the mic channel by 1 dB for each step in `turn_n`, stopping at {MIC_MAX} dB. Only while the audio is on")
     lib(MIC_DOWN, "Mic\nDown", [when(POWERED, [fader_step("mic_level", MIC_NOW, mic, MIC_MIN, MIC_MAX, -1)])],
-        f"Lowers the mic bus by 1 dB for each step in `turn_n`, stopping at {MIC_MIN} dB. Only while the audio is on")
+        f"Lowers the mic channel by 1 dB for each step in `turn_n`, stopping at {MIC_MIN} dB. Only while the audio is on")
     lib(MIC_MUTE, "Mic\nMute", [when(POWERED, [when(MIC_MUTED, [wing_mute(mic, False), setvar("mic_muted", 0)],
                                                      [wing_mute(mic, True), setvar("mic_muted", 1)])])],
-        "Mutes or unmutes the mic bus. Only while the audio is on")
+        "Mutes or unmutes the mic channel. Only while the audio is on")
     lib(CLOSE_UP, "Close\nUp", [setvar("light_mode", "deck"), wait(20), press(LIGHTS_OFF), press(ALL_TVS_OFF),
                                 press(POWER_OFF)],
         "Leaves iPad Mode, then turns off the lights, every TV and the audio system. The night schedule runs it")
@@ -1228,7 +1230,7 @@ VARIABLES = {  # name: (description, default)
     **{var: (f"{title.title()} fader in dB, kept in step with the Wing", str(SRC_NORMAL))
        for _, _, var, title, _ in VOLUME_SOURCES},
     **{f"z{z}_level": (f"{name} fader in dB, kept in step with the Wing", str(db)) for z, name, _, db, _ in ZONES},
-    "mic_level": ("Mic bus fader in dB, kept in step with the Wing", str(MIC_START)),
+    "mic_level": ("Mic channel fader in dB, kept in step with the Wing", str(MIC_START)),
     "mic_muted": ("1 while the mics are muted", "0"),
     "music_n": ("Number of the chosen playlist", "1"),
     "music_name": ("Name of the chosen playlist", "Morning"),
@@ -1248,7 +1250,7 @@ VARIABLES = {  # name: (description, default)
     "turn_key": ("Which dial last clicked, and which way", ""),
 }
 PERSIST_OFF = {"lt_saved", "turn_n", "turn_ms", "turn_key"}
-WING_VARIABLES = ({f"mtx{mx}_level" for _, _, mx, *_ in ZONES} | {f"bus{MIC_BUS}_level", f"bus{MIC_BUS}_mute"}
+WING_VARIABLES = ({f"mtx{mx}_level" for _, _, mx, *_ in ZONES} | {f"ch{MIC_CH}_level", f"ch{MIC_CH}_mute"}
                   | {f"{sel.strip('/').replace('/', '')}_level" for _, sel, *_ in VOLUME_SOURCES})
 
 
@@ -2497,7 +2499,7 @@ class Sim:
         self.connected = connected
         self.wing = {f"mtx{mx}_level": float(db) for _, _, mx, db, *_ in ZONES} if connected else {}
         if connected:
-            self.wing.update({f"bus{MIC_BUS}_level": float(MIC_START), f"bus{MIC_BUS}_mute": 0})
+            self.wing.update({f"ch{MIC_CH}_level": float(MIC_START), f"ch{MIC_CH}_mute": 0})
             self.wing.update({f"{sel.strip('/').replace('/', '')}_level": float(SRC_NORMAL)
                               for _, sel, *_ in VOLUME_SOURCES})
         self.sends, self.mutes, self.log, self.page = {}, {}, [], 1
@@ -2732,7 +2734,7 @@ def tests():
     ok("the Zone dial speeds up too", s.wing["mtx1_level"] == -6.0 - 1 - TURN_FAST and s.vars["z1_level"] == -11)
     s.turn("1/3/3", "left", gap=20)
     s.turn("1/3/3", "left", gap=20)
-    ok("the Mics dial speeds up too", s.wing[f"bus{MIC_BUS}_level"] == MIC_START - 1 - TURN_FAST)
+    ok("the Mics dial speeds up too", s.wing[f"ch{MIC_CH}_level"] == MIC_START - 1 - TURN_FAST)
     s = Sim(connected=False)
     s.press(SCENE_LOC["Music Inside"])
     s.turn("1/3/2", "left", gap=20)
@@ -3005,14 +3007,14 @@ def tests():
     ok("the Zone dial lifts a zone from -oo", s.wing["mtx1_level"] == -89.0)
     s = Sim()
     s.press("1/1/0")
-    s.wing[f"bus{MIC_BUS}_level"] = 0.0
+    s.wing[f"ch{MIC_CH}_level"] = 0.0
     s.turn("1/3/3", "right")
-    ok("Mics stop at 0 dB", s.wing[f"bus{MIC_BUS}_level"] == 0.0)
+    ok("Mics stop at 0 dB", s.wing[f"ch{MIC_CH}_level"] == 0.0)
     s.run(KEYS["1/3/3"].down)
-    ok("pushing Mics mutes them", s.show("1/2/3", "value") == "Muted" and s.wing[f"bus{MIC_BUS}_mute"] == 1)
+    ok("pushing Mics mutes them", s.show("1/2/3", "value") == "Muted" and s.wing[f"ch{MIC_CH}_mute"] == 1)
     s.run(KEYS["1/3/3"].down)
     ok("pushing again unmutes", s.show("1/2/3", "value") == "0 dB")
-    s.wing[f"bus{MIC_BUS}_level"] = -20.0
+    s.wing[f"ch{MIC_CH}_level"] = -20.0
     ok("the Mics panel follows the Wing, not Companion's copy", s.show("1/2/3", "value") == "-20 dB")
     ok("no badge while the Wing reports", s.eval(KEYS["1/2/2"].show["badge"]) is False)
     s = Sim()
@@ -3075,8 +3077,8 @@ def tests():
     s.run(KEYS["1/3/3"].down)
     s.turn("6/3/2", "right")
     s.run(KEYS["6/3/2"].down)
-    ok("while off, the Mics and Zone dials do nothing", s.wing[f"bus{MIC_BUS}_level"] == MIC_START
-       and s.wing[f"bus{MIC_BUS}_mute"] == 0 and s.wing["mtx1_level"] == -6.0 and not s.log)
+    ok("while off, the Mics and Zone dials do nothing", s.wing[f"ch{MIC_CH}_level"] == MIC_START
+       and s.wing[f"ch{MIC_CH}_mute"] == 0 and s.wing["mtx1_level"] == -6.0 and not s.log)
     ok("while off, the Volume and Mics panels say Off and grey out", s.show("1/2/2", "value") == "Off"
        and s.show("1/2/3", "value") == "Off" and s.show("1/2/3", "pct") == 0 and s.eval(KEYS["1/2/3"].show["dim"])
        and s.eval(KEYS["1/2/2"].show["dim"]))
@@ -3265,7 +3267,7 @@ def tests():
     states[1].press("6/1/0")
     states[2].press("1/1/0")
     states[2].press(IPAD_KEY, held=True)
-    states[2].wing.update({"mtx1_level": "-oo", f"bus{MIC_BUS}_mute": 1})
+    states[2].wing.update({"mtx1_level": "-oo", f"ch{MIC_CH}_mute": 1})
     states[4].press("1/1/1")
     bad = []
     for st in states:
@@ -3743,7 +3745,7 @@ def sample_state(ipad=False):
     s.turn("4/3/2", "right")
     s.turn("4/3/2", "right")
     s.press(SCENE_LOC["Music Inside"])
-    s.wing[f"bus{MIC_BUS}_level"] = -8.0
+    s.wing[f"ch{MIC_CH}_level"] = -8.0
     s.press(TVS_KEY)  # every TV on, then Back Stage off and Cafe switched to the stream
     s.press(f"{TV_PAGE[7]}/0/0")
     s.press(f"{TV_PAGE[3]}/0/1")
